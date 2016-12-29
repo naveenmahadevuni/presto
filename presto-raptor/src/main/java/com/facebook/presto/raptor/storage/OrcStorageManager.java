@@ -63,7 +63,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
+//import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -107,7 +107,7 @@ import static io.airlift.concurrent.MoreFutures.getFutureValue;
 import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 import static io.airlift.json.JsonCodec.jsonCodec;
 import static java.lang.Math.min;
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+//import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
@@ -313,14 +313,9 @@ public class OrcStorageManager
         File stagingFile = storageService.getStagingFile(shardUuid);
         File storageFile = storageService.getStorageFile(shardUuid);
 
-        storageService.createParents(storageFile);
+        //storageService.createParents(storageFile);
 
-        try {
-            Files.move(stagingFile.toPath(), storageFile.toPath(), ATOMIC_MOVE);
-        }
-        catch (IOException e) {
-            throw new PrestoException(RAPTOR_ERROR, "Failed to move shard file", e);
-        }
+            stagingFile.delete();
     }
 
     @VisibleForTesting

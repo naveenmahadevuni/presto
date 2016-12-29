@@ -44,6 +44,7 @@ public class BackupModule
         this.providers = ImmutableMap.<String, Module>builder()
                 .put("file", new FileBackupModule())
                 .put("http", new HttpBackupModule())
+                .put("centera", new CenteraBackupModule())
                 .putAll(providers)
                 .build();
     }
