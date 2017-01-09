@@ -78,7 +78,7 @@ public class ShardCleaner
     private final Duration transactionCleanerInterval;
     private final Duration localCleanerInterval;
     private final Duration localCleanTime;
-    private final Duration oldLocalShardCleanerInterval;    
+    private final Duration oldLocalShardCleanerInterval;
     private final Duration oldLocalShardCleanTime;
     private final Duration backupCleanerInterval;
     private final Duration backupCleanTime;
@@ -156,7 +156,7 @@ public class ShardCleaner
         this.transactionCleanerInterval = requireNonNull(transactionCleanerInterval, "transactionCleanerInterval is null");
         this.localCleanerInterval = requireNonNull(localCleanerInterval, "localCleanerInterval is null");
         this.localCleanTime = requireNonNull(localCleanTime, "localCleanTime is null");
-        this.oldLocalShardCleanerInterval = requireNonNull(oldLocalShardCleanerInterval, "oldLocalShardCleanerInterval is null");        
+        this.oldLocalShardCleanerInterval = requireNonNull(oldLocalShardCleanerInterval, "oldLocalShardCleanerInterval is null");
         this.oldLocalShardCleanTime = requireNonNull(oldLocalShardCleanTime, "oldLocalShardCleanTime is null");
         this.backupCleanerInterval = requireNonNull(backupCleanerInterval, "backupCleanerInterval is null");
         this.backupCleanTime = requireNonNull(backupCleanTime, "backupCleanTime is null");
@@ -228,7 +228,7 @@ public class ShardCleaner
     {
         return oldLocalShardsCleaned;
     }
-    
+
     private void startJobs()
     {
         if (coordinator) {
@@ -312,7 +312,7 @@ public class ShardCleaner
             }
         }, 0, oldLocalShardCleanerInterval.toMillis(), MILLISECONDS);
     }
-    
+
     @VisibleForTesting
     void abortOldTransactions()
     {
@@ -423,7 +423,7 @@ public class ShardCleaner
         oldLocalShardsCleaned.update(deletions.size());
         log.info("Cleaned %s local shards", deletions.size());
     }
-    
+
     @VisibleForTesting
     void cleanBackupShards()
     {

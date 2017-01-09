@@ -98,7 +98,7 @@ public class ShardCleanerConfig
         this.localCleanTime = localCleanTime;
         return this;
     }
-    
+
     @NotNull
     @MinDuration("1m")
     public Duration getOldLocalShardCleanerInterval()
@@ -113,7 +113,6 @@ public class ShardCleanerConfig
         this.oldLocalShardCleanerInterval = oldLocalShardCleanerInterval;
         return this;
     }
-    
 
     @NotNull
     public Duration getOldLocalShardCleanTime()
