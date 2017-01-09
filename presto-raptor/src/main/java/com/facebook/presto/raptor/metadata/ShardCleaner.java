@@ -78,6 +78,8 @@ public class ShardCleaner
     private final Duration transactionCleanerInterval;
     private final Duration localCleanerInterval;
     private final Duration localCleanTime;
+    private final Duration oldLocalShardCleanerInterval;    
+    private final Duration oldLocalShardCleanTime;
     private final Duration backupCleanerInterval;
     private final Duration backupCleanTime;
     private final ScheduledExecutorService scheduler;
@@ -92,9 +94,11 @@ public class ShardCleaner
     private final CounterStat backupShardsQueued = new CounterStat();
     private final CounterStat backupShardsCleaned = new CounterStat();
     private final CounterStat localShardsCleaned = new CounterStat();
+    private final CounterStat oldLocalShardsCleaned = new CounterStat();
 
     @GuardedBy("this")
     private final Map<UUID, Long> shardsToClean = new HashMap<>();
+    private final Map<UUID, Long> oldLocalShardsToClean = new HashMap<>();
 
     @Inject
     public ShardCleaner(
@@ -116,6 +120,8 @@ public class ShardCleaner
                 config.getTransactionCleanerInterval(),
                 config.getLocalCleanerInterval(),
                 config.getLocalCleanTime(),
+                config.getOldLocalShardCleanerInterval(),
+                config.getOldLocalShardCleanTime(),
                 config.getBackupCleanerInterval(),
                 config.getBackupCleanTime(),
                 config.getBackupDeletionThreads(),
@@ -133,6 +139,8 @@ public class ShardCleaner
             Duration transactionCleanerInterval,
             Duration localCleanerInterval,
             Duration localCleanTime,
+            Duration oldLocalShardCleanerInterval,
+            Duration oldLocalShardCleanTime,
             Duration backupCleanerInterval,
             Duration backupCleanTime,
             int backupDeletionThreads,
@@ -148,6 +156,8 @@ public class ShardCleaner
         this.transactionCleanerInterval = requireNonNull(transactionCleanerInterval, "transactionCleanerInterval is null");
         this.localCleanerInterval = requireNonNull(localCleanerInterval, "localCleanerInterval is null");
         this.localCleanTime = requireNonNull(localCleanTime, "localCleanTime is null");
+        this.oldLocalShardCleanerInterval = requireNonNull(oldLocalShardCleanerInterval, "oldLocalShardCleanerInterval is null");        
+        this.oldLocalShardCleanTime = requireNonNull(oldLocalShardCleanTime, "oldLocalShardCleanTime is null");
         this.backupCleanerInterval = requireNonNull(backupCleanerInterval, "backupCleanerInterval is null");
         this.backupCleanTime = requireNonNull(backupCleanTime, "backupCleanTime is null");
         this.scheduler = newScheduledThreadPool(2, daemonThreadsNamed("shard-cleaner-%s"));
@@ -212,6 +222,13 @@ public class ShardCleaner
         return localShardsCleaned;
     }
 
+    @Managed
+    @Nested
+    public CounterStat getOldLocalShardsCleaned()
+    {
+        return oldLocalShardsCleaned;
+    }
+    
     private void startJobs()
     {
         if (coordinator) {
@@ -226,6 +243,7 @@ public class ShardCleaner
         // on a worker and being committed (referenced) in the database.
         if (backupStore.isPresent()) {
             startLocalCleanup();
+            startOldLocalShardCleanup();
         }
     }
 
@@ -276,6 +294,25 @@ public class ShardCleaner
         }, 0, localCleanerInterval.toMillis(), MILLISECONDS);
     }
 
+    private void startOldLocalShardCleanup()
+    {
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                // jitter to avoid overloading database
+                long interval = this.oldLocalShardCleanerInterval.roundTo(SECONDS);
+                SECONDS.sleep(ThreadLocalRandom.current().nextLong(1, interval));
+                cleanOldLocalShards();
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            catch (Throwable t) {
+                log.error(t, "Error cleaning old local shards");
+                localJobErrors.update(1);
+            }
+        }, 0, oldLocalShardCleanerInterval.toMillis(), MILLISECONDS);
+    }
+    
     @VisibleForTesting
     void abortOldTransactions()
     {
@@ -349,6 +386,44 @@ public class ShardCleaner
         log.info("Cleaned %s local shards", deletions.size());
     }
 
+    @VisibleForTesting
+    synchronized void cleanOldLocalShards()
+    {
+        // find all files on the local node
+        Set<UUID> local = storageService.getStorageShards();
+
+        // get shards assigned to the local node
+        Set<UUID> assigned = dao.getNodeShards(currentNode, null).stream()
+                .map(ShardMetadata::getShardUuid)
+                .collect(toSet());
+
+        // add all files that are assigned to this local node
+        for (UUID uuid : local) {
+            if (assigned.contains(uuid)) {
+                oldLocalShardsToClean.putIfAbsent(uuid, ticker.read());
+            }
+        }
+
+        // delete files marked earlier than the clean interval for old shard files
+        long threshold = ticker.read() - oldLocalShardCleanTime.roundTo(NANOSECONDS);
+        Set<UUID> deletions = oldLocalShardsToClean.entrySet().stream()
+                .filter(entry -> entry.getValue() < threshold)
+                .map(Map.Entry::getKey)
+                .collect(toSet());
+        if (deletions.isEmpty()) {
+            return;
+        }
+
+        for (UUID uuid : deletions) {
+            deleteFile(storageService.getStorageFile(uuid));
+            dao.insertCleanedupShards(uuid, currentNode, ticker.read());
+            oldLocalShardsToClean.remove(uuid);
+        }
+
+        oldLocalShardsCleaned.update(deletions.size());
+        log.info("Cleaned %s local shards", deletions.size());
+    }
+    
     @VisibleForTesting
     void cleanBackupShards()
     {

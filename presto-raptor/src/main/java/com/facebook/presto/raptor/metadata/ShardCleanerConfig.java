@@ -32,6 +32,8 @@ public class ShardCleanerConfig
     private Duration transactionCleanerInterval = new Duration(10, MINUTES);
     private Duration localCleanerInterval = new Duration(1, HOURS);
     private Duration localCleanTime = new Duration(4, HOURS);
+    private Duration oldLocalShardCleanerInterval = new Duration(1, HOURS);
+    private Duration oldLocalShardCleanTime = new Duration(15, MINUTES);
     private Duration backupCleanerInterval = new Duration(5, MINUTES);
     private Duration backupCleanTime = new Duration(1, DAYS);
     private int backupDeletionThreads = 50;
@@ -94,6 +96,36 @@ public class ShardCleanerConfig
     public ShardCleanerConfig setLocalCleanTime(Duration localCleanTime)
     {
         this.localCleanTime = localCleanTime;
+        return this;
+    }
+    
+    @NotNull
+    @MinDuration("1m")
+    public Duration getOldLocalShardCleanerInterval()
+    {
+        return oldLocalShardCleanerInterval;
+    }
+
+    @Config("raptor.old-local-shard-cleaner-interval")
+    @ConfigDescription("How often to discover old local shards that need to be cleaned up")
+    public ShardCleanerConfig setOldLocalShardCleanerInterval(Duration oldLocalShardCleanerInterval)
+    {
+        this.oldLocalShardCleanerInterval = oldLocalShardCleanerInterval;
+        return this;
+    }
+    
+
+    @NotNull
+    public Duration getOldLocalShardCleanTime()
+    {
+        return oldLocalShardCleanTime;
+    }
+
+    @Config("raptor.old-local-shard-clean-time")
+    @ConfigDescription("How long to wait after retrieval from backup before cleaning local shards")
+    public ShardCleanerConfig setOldLocalShardCleanTime(Duration oldLocalShardCleanTime)
+    {
+        this.oldLocalShardCleanTime = oldLocalShardCleanTime;
         return this;
     }
 

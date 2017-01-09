@@ -157,4 +157,26 @@ public interface SchemaDao
             "  FOREIGN KEY (table_id) REFERENCES tables (table_id)\n" +
             ")")
     void createTableShardOrganizerJobs();
+    
+    @SqlUpdate("CREATE TABLE IF NOT EXISTS shards_cleanup_queue (\n" +
+            "  shard_uuid BINARY(16) NOT NULL,\n" +
+            "  table_id BIGINT NOT NULL,\n" +
+            "  node_identifier VARCHAR(255) NOT NULL,\n" +
+            "  last_fetch_time BIGINT,\n" +
+            "  PRIMARY KEY (shard_uuid),\n" +
+            "  UNIQUE (shard_uuid, table_id, node_identifier),\n" +
+            "  FOREIGN KEY (table_id) REFERENCES tables (table_id)\n" +
+            ")")
+    void createTableShardsCleanupQueue();
+
+    @SqlUpdate("CREATE TABLE IF NOT EXISTS shards_cleanup_stats (\n" +
+            "  shard_uuid BINARY(16) NOT NULL,\n" +
+            "  node_identifier VARCHAR(255) NOT NULL,\n" +
+            "  last_cleanup_time BIGINT,\n" +
+            "  PRIMARY KEY (shard_uuid, last_cleanup_time),\n" +
+            "  UNIQUE (shard_uuid, node_identifier),\n" +
+            "  FOREIGN KEY (shard_uuid) REFERENCES tables (shard_uuid)\n" +
+            ")")
+    void createTableShardsCleanupStats();
+    
 }
