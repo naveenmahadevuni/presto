@@ -99,6 +99,8 @@ public class TestShardCleaner
                 config.getTransactionCleanerInterval(),
                 config.getLocalCleanerInterval(),
                 config.getLocalCleanTime(),
+                config.getOldLocalShardCleanerInterval(),
+                config.getOldLocalShardCleanTime(),
                 config.getBackupCleanerInterval(),
                 config.getBackupCleanTime(),
                 config.getBackupDeletionThreads(),
