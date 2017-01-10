@@ -416,12 +416,13 @@ public class ShardCleaner
 
         for (UUID uuid : deletions) {
             deleteFile(storageService.getStorageFile(uuid));
-            dao.insertCleanedupShards(uuid, currentNode, ticker.read());
+            log.info("Cleaned old local shard %s", uuid);
+            dao.insertCleanedupShards(uuid, currentNode);
             oldLocalShardsToClean.remove(uuid);
         }
 
         oldLocalShardsCleaned.update(deletions.size());
-        log.info("Cleaned %s local shards", deletions.size());
+        log.info("Cleaned %s old local shards", deletions.size());
     }
 
     @VisibleForTesting

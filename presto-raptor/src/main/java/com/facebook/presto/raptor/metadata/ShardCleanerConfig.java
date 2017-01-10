@@ -32,8 +32,8 @@ public class ShardCleanerConfig
     private Duration transactionCleanerInterval = new Duration(10, MINUTES);
     private Duration localCleanerInterval = new Duration(1, HOURS);
     private Duration localCleanTime = new Duration(4, HOURS);
-    private Duration oldLocalShardCleanerInterval = new Duration(1, HOURS);
-    private Duration oldLocalShardCleanTime = new Duration(15, MINUTES);
+    private Duration oldLocalShardCleanerInterval = new Duration(30, MINUTES);
+    private Duration oldLocalShardCleanTime = new Duration(5, MINUTES);
     private Duration backupCleanerInterval = new Duration(5, MINUTES);
     private Duration backupCleanTime = new Duration(1, DAYS);
     private int backupDeletionThreads = 50;
