@@ -206,23 +206,11 @@ public interface ShardDao
             @Bind("bucketNumber") int bucketNumber,
             @Bind("nodeId") int nodeId);
 
-    @SqlUpdate("INSERT INTO shards_cleanup_queue (shard_uuid, table_id, node_identifier, last_fetch_time)\n" +
-            "VALUES (:shardUuid, :tableId, :nodeIdentifier, :fetchTime) ON DUPLICATE KEY UPDATE last_fetch_time = :fetchTime")
-    void insertRetrievedShards(
-            @Bind("shardUuid") UUID shardUuid,
-            @Bind("tableId") Long tableId,
-            @Bind("nodeIdentifier") String nodeIdentifier,
-            @Bind("fetchTime") Timestamp fetchTime);
-
-    @SqlUpdate("DELETE FROM shards_cleanup_queue WHERE shard_uuid = :shardUuid")
-    void deleteCleanedShards(@Bind("shardUuid") UUID shardUuid);
-
     @SqlUpdate("INSERT INTO shards_cleanup_stats (shard_uuid, node_identifier, last_cleanup_time)\n" +
-            "VALUES (:shardUuid, :nodeIdentifier, :cleanupTime)")
+            "VALUES (:shardUuid, :nodeIdentifier, CURRENT_TIMESTAMP)")
     void insertCleanedupShards(
             @Bind("shardUuid") UUID shardUuid,
-            @Bind("nodeIdentifier") String nodeIdentifier,
-            @Bind("cleanupTime") Long cleanupTime);
+            @Bind("nodeIdentifier") String nodeIdentifier);
 
     int deleteOldCompletedTransactions(@Bind("maxEndTime") Timestamp maxEndTime);
 }
