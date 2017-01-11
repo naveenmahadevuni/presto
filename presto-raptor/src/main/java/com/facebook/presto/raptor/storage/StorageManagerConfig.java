@@ -41,7 +41,7 @@ public class StorageManagerConfig
     private File dataDirectory;
     private DataSize minAvailableSpace = new DataSize(0, BYTE);
     private Duration shardRecoveryTimeout = new Duration(30, TimeUnit.SECONDS);
-    private Duration missingShardDiscoveryInterval = new Duration(3600, TimeUnit.HOURS);
+    private Duration missingShardDiscoveryInterval = new Duration(365, TimeUnit.DAYS);
     private boolean compactionEnabled = false;
     private Duration compactionInterval = new Duration(1, TimeUnit.HOURS);
     private Duration shardEjectorInterval = new Duration(4, TimeUnit.HOURS);

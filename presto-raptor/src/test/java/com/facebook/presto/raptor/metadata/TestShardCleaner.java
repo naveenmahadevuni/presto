@@ -101,6 +101,8 @@ public class TestShardCleaner
                 config.getLocalCleanTime(),
                 config.getOldLocalShardCleanerInterval(),
                 config.getOldLocalShardCleanTime(),
+                config.getLocalShardSpaceCheckInterval(),
+                config.getMinDiskSpaceLoadQuery(),
                 config.getBackupCleanerInterval(),
                 config.getBackupCleanTime(),
                 config.getBackupDeletionThreads(),

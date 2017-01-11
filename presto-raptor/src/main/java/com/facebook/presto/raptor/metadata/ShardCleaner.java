@@ -22,6 +22,7 @@ import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.log.Logger;
 import io.airlift.stats.CounterStat;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.weakref.jmx.Managed;
 import org.weakref.jmx.Nested;
@@ -80,6 +81,8 @@ public class ShardCleaner
     private final Duration localCleanTime;
     private final Duration oldLocalShardCleanerInterval;
     private final Duration oldLocalShardCleanTime;
+    private final Duration localShardSpaceCheckInterval;
+    private final DataSize minDiskSpaceLoadQuery;
     private final Duration backupCleanerInterval;
     private final Duration backupCleanTime;
     private final ScheduledExecutorService scheduler;
@@ -122,6 +125,8 @@ public class ShardCleaner
                 config.getLocalCleanTime(),
                 config.getOldLocalShardCleanerInterval(),
                 config.getOldLocalShardCleanTime(),
+                config.getLocalShardSpaceCheckInterval(),
+                config.getMinDiskSpaceLoadQuery(),
                 config.getBackupCleanerInterval(),
                 config.getBackupCleanTime(),
                 config.getBackupDeletionThreads(),
@@ -141,6 +146,8 @@ public class ShardCleaner
             Duration localCleanTime,
             Duration oldLocalShardCleanerInterval,
             Duration oldLocalShardCleanTime,
+            Duration localShardSpaceCheckInterval,
+            DataSize minDiskSpaceLoadQuery,
             Duration backupCleanerInterval,
             Duration backupCleanTime,
             int backupDeletionThreads,
@@ -158,6 +165,8 @@ public class ShardCleaner
         this.localCleanTime = requireNonNull(localCleanTime, "localCleanTime is null");
         this.oldLocalShardCleanerInterval = requireNonNull(oldLocalShardCleanerInterval, "oldLocalShardCleanerInterval is null");
         this.oldLocalShardCleanTime = requireNonNull(oldLocalShardCleanTime, "oldLocalShardCleanTime is null");
+        this.localShardSpaceCheckInterval = requireNonNull(localShardSpaceCheckInterval, "localShardSpaceCheckInterval is null");
+        this.minDiskSpaceLoadQuery = requireNonNull(minDiskSpaceLoadQuery, "minDiskSpaceLoadQuery is null");
         this.backupCleanerInterval = requireNonNull(backupCleanerInterval, "backupCleanerInterval is null");
         this.backupCleanTime = requireNonNull(backupCleanTime, "backupCleanTime is null");
         this.scheduler = newScheduledThreadPool(2, daemonThreadsNamed("shard-cleaner-%s"));
@@ -244,6 +253,7 @@ public class ShardCleaner
         if (backupStore.isPresent()) {
             startLocalCleanup();
             startOldLocalShardCleanup();
+            startLocalShardSpaceCheck();
         }
     }
 
@@ -311,6 +321,27 @@ public class ShardCleaner
                 localJobErrors.update(1);
             }
         }, 0, oldLocalShardCleanerInterval.toMillis(), MILLISECONDS);
+    }
+
+    private void startLocalShardSpaceCheck()
+    {
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                // jitter to avoid overloading database
+                long interval = this.localShardSpaceCheckInterval.roundTo(SECONDS);
+                SECONDS.sleep(ThreadLocalRandom.current().nextLong(1, interval));
+                if(storageService.getAvailableBytes() < minDiskSpaceLoadQuery.toBytes()) {// + minAvailableSpace.toBytes()){
+                    cleanOldLocalShards();
+                }
+           }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            catch (Throwable t) {
+                log.error(t, "Error checking space used by local shards");
+                localJobErrors.update(1);
+            }
+        }, 0, localShardSpaceCheckInterval.toMillis(), MILLISECONDS);
     }
 
     @VisibleForTesting

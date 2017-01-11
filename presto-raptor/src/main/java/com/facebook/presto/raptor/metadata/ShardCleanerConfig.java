@@ -15,7 +15,9 @@ package com.facebook.presto.raptor.metadata;
 
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import io.airlift.units.MaxDuration;
 import io.airlift.units.MinDuration;
 
@@ -32,8 +34,10 @@ public class ShardCleanerConfig
     private Duration transactionCleanerInterval = new Duration(10, MINUTES);
     private Duration localCleanerInterval = new Duration(1, HOURS);
     private Duration localCleanTime = new Duration(4, HOURS);
-    private Duration oldLocalShardCleanerInterval = new Duration(30, MINUTES);
+    private Duration oldLocalShardCleanerInterval = new Duration(4, HOURS);
     private Duration oldLocalShardCleanTime = new Duration(5, MINUTES);
+    private Duration localShardSpaceCheckInterval = new Duration(6, HOURS);
+    private DataSize minDiskSpaceLoadQuery = new DataSize(2560, MEGABYTE);
     private Duration backupCleanerInterval = new Duration(5, MINUTES);
     private Duration backupCleanTime = new Duration(1, DAYS);
     private int backupDeletionThreads = 50;
@@ -125,6 +129,35 @@ public class ShardCleanerConfig
     public ShardCleanerConfig setOldLocalShardCleanTime(Duration oldLocalShardCleanTime)
     {
         this.oldLocalShardCleanTime = oldLocalShardCleanTime;
+        return this;
+    }
+
+    @NotNull
+    @MinDuration("1m")
+    public Duration getLocalShardSpaceCheckInterval()
+    {
+        return localShardSpaceCheckInterval;
+    }
+
+    @Config("raptor.local-shard-space-check-interval")
+    @ConfigDescription("How often to check local shard space usage")
+    public ShardCleanerConfig setLocalShardSpaceCheckInterval(Duration localShardSpaceCheckInterval)
+    {
+        this.localShardSpaceCheckInterval = localShardSpaceCheckInterval;
+        return this;
+    }
+
+    @NotNull
+    public DataSize getMinDiskSpaceLoadQuery()
+    {
+        return minDiskSpaceLoadQuery;
+    }
+
+    @Config("raptor.min-disk-space-load-query")
+    @ConfigDescription("How much disk space in Mega Bytes reserved for Raptor load, query operation and minimum free space")
+    public ShardCleanerConfig setMinDiskSpaceLoadQuery(DataSize minDiskSpaceLoadQuery)
+    {
+        this.minDiskSpaceLoadQuery = minDiskSpaceLoadQuery;
         return this;
     }
 
