@@ -67,7 +67,7 @@ public class BackupManager
         executorService.shutdownNow();
     }
 
-    public CompletableFuture<?> submit(UUID uuid, File source)
+    public CompletableFuture<?> submit(UUID uuid, File source, String schemaTableName)
     {
         requireNonNull(uuid, "uuid is null");
         requireNonNull(source, "source is null");
@@ -78,7 +78,7 @@ public class BackupManager
 
         // TODO: decrement when the running task is finished (not immediately on cancel)
         pendingBackups.incrementAndGet();
-        CompletableFuture<?> future = runAsync(new BackgroundBackup(uuid, source), executorService);
+        CompletableFuture<?> future = runAsync(new BackgroundBackup(uuid, source, schemaTableName), executorService);
         future.whenComplete((none, throwable) -> pendingBackups.decrementAndGet());
         return future;
     }
@@ -88,12 +88,14 @@ public class BackupManager
     {
         private final UUID uuid;
         private final File source;
+        private final String schemaTableName;
         private final long queuedTime = System.nanoTime();
 
-        public BackgroundBackup(UUID uuid, File source)
+        public BackgroundBackup(UUID uuid, File source, String schemaTableName)
         {
             this.uuid = requireNonNull(uuid, "uuid is null");
             this.source = requireNonNull(source, "source is null");
+            this.schemaTableName = schemaTableName;
         }
 
         @Override
@@ -103,7 +105,7 @@ public class BackupManager
                 stats.addQueuedTime(Duration.nanosSince(queuedTime));
                 long start = System.nanoTime();
 
-                backupStore.get().backupShard(uuid, source);
+                backupStore.get().backupShard(uuid, source, schemaTableName);
                 stats.addCopyShardDataRate(new DataSize(source.length(), BYTE), Duration.nanosSince(start));
                 stats.incrementBackupSuccess();
             }

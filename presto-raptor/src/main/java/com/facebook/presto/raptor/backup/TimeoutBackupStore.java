@@ -56,10 +56,10 @@ public class TimeoutBackupStore
     }
 
     @Override
-    public void backupShard(UUID uuid, File source)
+    public void backupShard(UUID uuid, File source, String schemaTableName)
     {
         try {
-            store.backupShard(uuid, source);
+            store.backupShard(uuid, source, schemaTableName);
         }
         catch (UncheckedTimeoutException e) {
             throw new PrestoException(RAPTOR_BACKUP_TIMEOUT, "Shard backup timed out");
@@ -96,6 +96,17 @@ public class TimeoutBackupStore
         }
         catch (UncheckedTimeoutException e) {
             throw new PrestoException(RAPTOR_BACKUP_TIMEOUT, "Shard existence check timed out");
+        }
+    }
+
+    @Override
+    public boolean canDeleteShard(UUID uuid)
+    {
+        try {
+            return store.canDeleteShard(uuid);
+        }
+        catch (UncheckedTimeoutException e) {
+            throw new PrestoException(RAPTOR_BACKUP_TIMEOUT, "Shard can delete check timed out");
         }
     }
 

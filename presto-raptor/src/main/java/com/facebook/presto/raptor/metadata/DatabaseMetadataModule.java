@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.raptor.metadata;
 
+import com.facebook.presto.raptor.backup.metadata.BackupMetadataDao;
 import com.facebook.presto.raptor.util.DaoSupplier;
 import com.google.common.reflect.TypeParameter;
 import com.google.common.reflect.TypeToken;
@@ -57,6 +58,7 @@ public class DatabaseMetadataModule
                 binder -> {
                     binder.install(new MySqlDataSourceModule());
                     bindDaoSupplier(binder, ShardDao.class, MySqlShardDao.class);
+                    bindDaoSupplier(binder, BackupMetadataDao.class, MySqlBackupMetadataDao.class);
                 }));
 
         install(installModuleIf(
@@ -65,6 +67,7 @@ public class DatabaseMetadataModule
                 binder -> {
                     binder.install(new H2EmbeddedDataSourceModule("metadata", ForMetadata.class));
                     bindDaoSupplier(binder, ShardDao.class, H2ShardDao.class);
+                    bindDaoSupplier(binder, BackupMetadataDao.class, H2BackupMetadataDao.class);
                 }));
     }
 

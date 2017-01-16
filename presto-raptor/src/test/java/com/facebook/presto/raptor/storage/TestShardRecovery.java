@@ -91,7 +91,7 @@ public class TestShardRecovery
 
         Files.write("test data", tempFile, UTF_8);
 
-        backupStore.backupShard(shardUuid, tempFile);
+        backupStore.backupShard(shardUuid, tempFile, null);
         assertTrue(backupStore.shardExists(shardUuid));
         File backupFile = backupStore.getBackupFile(shardUuid);
         assertTrue(backupFile.exists());
@@ -116,7 +116,7 @@ public class TestShardRecovery
         Files.write("test data", tempFile, UTF_8);
         Files.write("bad data", file, UTF_8);
 
-        backupStore.backupShard(shardUuid, tempFile);
+        backupStore.backupShard(shardUuid, tempFile, null);
 
         long backupSize = tempFile.length();
 

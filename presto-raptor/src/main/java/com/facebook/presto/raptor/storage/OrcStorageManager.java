@@ -286,12 +286,12 @@ public class OrcStorageManager
     }
 
     @Override
-    public StoragePageSink createStoragePageSink(long transactionId, OptionalInt bucketNumber, List<Long> columnIds, List<Type> columnTypes, boolean checkSpace)
+    public StoragePageSink createStoragePageSink(long transactionId, OptionalInt bucketNumber, List<Long> columnIds, List<Type> columnTypes, boolean checkSpace, String schemaTableName)
     {
         if (storageService.getAvailableBytes() < minAvailableSpace.toBytes()) {
             throw new PrestoException(RAPTOR_LOCAL_DISK_FULL, "Local disk is full on node " + nodeId);
         }
-        return new OrcStoragePageSink(transactionId, columnIds, columnTypes, bucketNumber);
+        return new OrcStoragePageSink(transactionId, columnIds, columnTypes, bucketNumber, schemaTableName);
     }
 
     private ShardRewriter createShardRewriter(long transactionId, OptionalInt bucketNumber, UUID shardUuid)
@@ -383,6 +383,10 @@ public class OrcStorageManager
             return ImmutableList.of();
         }
 
+        if (backupStore.isPresent() && !backupStore.get().canDeleteShard(shardUuid)) {
+            throw new PrestoException(RAPTOR_ERROR, "Data is under retention for a shard for this table. Cannot delete rows");
+        }
+
         UUID newShardUuid = UUID.randomUUID();
         File input = storageService.getStorageFile(shardUuid);
         File output = storageService.getStagingFile(newShardUuid);
@@ -397,7 +401,7 @@ public class OrcStorageManager
         shardRecorder.recordCreatedShard(transactionId, newShardUuid);
 
         // submit for backup and wait until it finishes
-        getFutureValue(backupManager.submit(newShardUuid, output));
+        getFutureValue(backupManager.submit(newShardUuid, output, null));
 
         Set<String> nodes = ImmutableSet.of(nodeId);
         long uncompressedSize = info.getUncompressedSize();
@@ -528,6 +532,7 @@ public class OrcStorageManager
         private final List<Long> columnIds;
         private final List<Type> columnTypes;
         private final OptionalInt bucketNumber;
+        private final String schemaTableName;
 
         private final List<File> stagingFiles = new ArrayList<>();
         private final List<ShardInfo> shards = new ArrayList<>();
@@ -537,12 +542,13 @@ public class OrcStorageManager
         private OrcFileWriter writer;
         private UUID shardUuid;
 
-        public OrcStoragePageSink(long transactionId, List<Long> columnIds, List<Type> columnTypes, OptionalInt bucketNumber)
+        public OrcStoragePageSink(long transactionId, List<Long> columnIds, List<Type> columnTypes, OptionalInt bucketNumber, String schemaTableName)
         {
             this.transactionId = transactionId;
             this.columnIds = ImmutableList.copyOf(requireNonNull(columnIds, "columnIds is null"));
             this.columnTypes = ImmutableList.copyOf(requireNonNull(columnTypes, "columnTypes is null"));
             this.bucketNumber = requireNonNull(bucketNumber, "bucketNumber is null");
+            this.schemaTableName = schemaTableName;
         }
 
         @Override
@@ -584,7 +590,7 @@ public class OrcStorageManager
                 shardRecorder.recordCreatedShard(transactionId, shardUuid);
 
                 File stagingFile = storageService.getStagingFile(shardUuid);
-                futures.add(backupManager.submit(shardUuid, stagingFile));
+                futures.add(backupManager.submit(shardUuid, stagingFile, schemaTableName));
 
                 Set<String> nodes = ImmutableSet.of(nodeId);
                 long rowCount = writer.getRowCount();

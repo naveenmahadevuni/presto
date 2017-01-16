@@ -32,6 +32,7 @@ public class ManagedBackupStore
     private final BackupOperationStats restoreShard = new BackupOperationStats();
     private final BackupOperationStats deleteShard = new BackupOperationStats();
     private final BackupOperationStats shardExists = new BackupOperationStats();
+    private final BackupOperationStats canDeleteShard = new BackupOperationStats();
 
     public ManagedBackupStore(BackupStore store)
     {
@@ -40,10 +41,10 @@ public class ManagedBackupStore
     }
 
     @Override
-    public void backupShard(UUID uuid, File source)
+    public void backupShard(UUID uuid, File source, String schemaTableName)
     {
         log.debug("Creating shard backup: %s", uuid);
-        backupShard.run(() -> store.backupShard(uuid, source));
+        backupShard.run(() -> store.backupShard(uuid, source, schemaTableName));
     }
 
     @Override
@@ -64,6 +65,12 @@ public class ManagedBackupStore
     public boolean shardExists(UUID uuid)
     {
         return shardExists.run(() -> store.shardExists(uuid));
+    }
+
+    @Override
+    public boolean canDeleteShard(UUID uuid)
+    {
+        return canDeleteShard.run(() -> store.canDeleteShard(uuid));
     }
 
     @Managed

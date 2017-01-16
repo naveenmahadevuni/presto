@@ -41,6 +41,7 @@ public class RaptorInsertTableHandle
     private final OptionalInt bucketCount;
     private final List<RaptorColumnHandle> bucketColumnHandles;
     private final Optional<RaptorColumnHandle> temporalColumnHandle;
+    private final String schemaTableName;
 
     @JsonCreator
     public RaptorInsertTableHandle(
@@ -54,7 +55,8 @@ public class RaptorInsertTableHandle
             @JsonProperty("sortOrders") List<SortOrder> sortOrders,
             @JsonProperty("bucketCount") OptionalInt bucketCount,
             @JsonProperty("bucketColumnHandles") List<RaptorColumnHandle> bucketColumnHandles,
-            @JsonProperty("temporalColumnHandle") Optional<RaptorColumnHandle> temporalColumnHandle)
+            @JsonProperty("temporalColumnHandle") Optional<RaptorColumnHandle> temporalColumnHandle,
+            @JsonProperty("schemaTableName") String schemaTableName)
     {
         checkArgument(tableId > 0, "tableId must be greater than zero");
 
@@ -70,6 +72,7 @@ public class RaptorInsertTableHandle
         this.bucketCount = requireNonNull(bucketCount, "bucketCount is null");
         this.bucketColumnHandles = ImmutableList.copyOf(requireNonNull(bucketColumnHandles, "bucketColumnHandles is null"));
         this.temporalColumnHandle = requireNonNull(temporalColumnHandle, "temporalColumnHandle is null");
+        this.schemaTableName = schemaTableName;
     }
 
     @JsonProperty
@@ -136,6 +139,12 @@ public class RaptorInsertTableHandle
     public Optional<RaptorColumnHandle> getTemporalColumnHandle()
     {
         return temporalColumnHandle;
+    }
+
+    @JsonProperty
+    public String getSchemaTableName()
+    {
+        return schemaTableName;
     }
 
     @Override

@@ -67,7 +67,8 @@ public class RaptorPageSinkProvider
                 handle.getBucketCount(),
                 toColumnIds(handle.getBucketColumnHandles()),
                 handle.getTemporalColumnHandle(),
-                maxBufferSize);
+                maxBufferSize,
+                handle.getSchemaName() + "." + handle.getTableName());
     }
 
     @Override
@@ -86,7 +87,8 @@ public class RaptorPageSinkProvider
                 handle.getBucketCount(),
                 toColumnIds(handle.getBucketColumnHandles()),
                 handle.getTemporalColumnHandle(),
-                maxBufferSize);
+                maxBufferSize,
+                handle.getSchemaTableName());
     }
 
     private static List<Long> toColumnIds(List<RaptorColumnHandle> columnHandles)

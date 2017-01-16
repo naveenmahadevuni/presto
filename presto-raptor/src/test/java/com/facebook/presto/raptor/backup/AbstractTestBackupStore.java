@@ -41,7 +41,7 @@ public abstract class AbstractTestBackupStore<T extends BackupStore>
         UUID uuid1 = randomUUID();
 
         assertFalse(store.shardExists(uuid1));
-        store.backupShard(uuid1, file1);
+        store.backupShard(uuid1, file1, null);
         assertTrue(store.shardExists(uuid1));
 
         // backup second file
@@ -50,7 +50,7 @@ public abstract class AbstractTestBackupStore<T extends BackupStore>
         UUID uuid2 = randomUUID();
 
         assertFalse(store.shardExists(uuid2));
-        store.backupShard(uuid2, file2);
+        store.backupShard(uuid2, file2, null);
         assertTrue(store.shardExists(uuid2));
 
         // verify first file

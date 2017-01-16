@@ -67,7 +67,7 @@ public class TestBackupManager
             Files.write("hello world", file, UTF_8);
             uuids.add(randomUUID());
 
-            futures.add(backupManager.submit(uuids.get(i), file));
+            futures.add(backupManager.submit(uuids.get(i), file, null));
         }
         futures.forEach(CompletableFuture::join);
         for (UUID uuid : uuids) {

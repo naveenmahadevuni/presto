@@ -13,31 +13,15 @@
  */
 package com.facebook.presto.raptor.backup;
 
-import com.facebook.presto.spi.PrestoException;
-
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 
 import javax.validation.constraints.NotNull;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
-import java.util.Properties;
-
-import static com.facebook.presto.raptor.RaptorErrorCode.RAPTOR_BACKUP_ERROR;
-import static com.facebook.presto.raptor.RaptorErrorCode.RAPTOR_BACKUP_NOT_FOUND;
-
-import static java.util.Objects.requireNonNull;
-
 public class CenteraBackupConfig
 {
-    private Properties prop;
     private String poolAddress;
-    private long retentionPeriod;
-    private String metadataFile;
+    private String configFilePath;
 
     @NotNull
     public CenteraBackupConfig getConfig()
@@ -45,26 +29,19 @@ public class CenteraBackupConfig
         return this;
     }
 
-    @Config("centera.config")
-    @ConfigDescription("Config detailing object store connection")
-    public CenteraBackupConfig setConfig(String configFilePath)
+    @Config("backup.centera.pooladdress")
+    @ConfigDescription("The pool address of the centera cluster")
+    public CenteraBackupConfig setPoolAddress(String poolAddress)
     {
-        requireNonNull(configFilePath, "centera config is null");
-        try {
-            FileInputStream configIs = new FileInputStream(new File(configFilePath));
-            prop = new Properties();
-            prop.load(configIs);
-        }
-        catch (FileNotFoundException e) {
-            throw new PrestoException(RAPTOR_BACKUP_NOT_FOUND, "File " + configFilePath + " not found. " + e);
-        }
-        catch (IOException e) {
-            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Failed to read " + configFilePath + e);
-        }
+        this.poolAddress = poolAddress;
+        return this;
+    }
 
-        poolAddress = prop.getProperty("centera.pooladdress");
-        retentionPeriod = Long.parseLong(prop.getProperty("centera.retentionperiod"));
-        metadataFile = prop.getProperty("centera.metadatafile");
+    @Config("backup.centera.config")
+    @ConfigDescription("Config detailing object store connection")
+    public CenteraBackupConfig setConfigFilePath(String configFilePath)
+    {
+        this.configFilePath =  configFilePath;
         return this;
     }
 
@@ -73,13 +50,8 @@ public class CenteraBackupConfig
         return poolAddress;
     }
 
-    public long getRetentionPeriod()
+    public String getConfigFilePath()
     {
-        return retentionPeriod;
-    }
-
-    public String getMetadataFile()
-    {
-        return metadataFile;
+        return configFilePath;
     }
 }
