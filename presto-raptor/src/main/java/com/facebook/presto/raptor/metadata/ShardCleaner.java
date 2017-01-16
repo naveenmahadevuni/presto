@@ -330,7 +330,8 @@ public class ShardCleaner
                 // jitter to avoid overloading database
                 long interval = this.localShardSpaceCheckInterval.roundTo(SECONDS);
                 SECONDS.sleep(ThreadLocalRandom.current().nextLong(1, interval));
-                if(storageService.getAvailableBytes() < minDiskSpaceLoadQuery.toBytes()) {// + minAvailableSpace.toBytes()){
+                if (storageService.getAvailableBytes() < minDiskSpaceLoadQuery.toBytes()) {
+                    // + minAvailableSpace.toBytes()){
                     cleanOldLocalShards();
                 }
            }
