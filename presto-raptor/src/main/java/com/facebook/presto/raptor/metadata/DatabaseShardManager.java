@@ -15,6 +15,7 @@ package com.facebook.presto.raptor.metadata;
 
 import com.facebook.presto.raptor.NodeSupplier;
 import com.facebook.presto.raptor.RaptorColumnHandle;
+import com.facebook.presto.raptor.backup.BackupStore;
 import com.facebook.presto.raptor.storage.organization.ShardOrganizerDao;
 import com.facebook.presto.raptor.util.DaoSupplier;
 import com.facebook.presto.spi.Node;
@@ -113,6 +114,7 @@ public class DatabaseShardManager
     private final Ticker ticker;
     private final Duration startupGracePeriod;
     private final long startTime;
+    private final Optional<BackupStore> backupStore;
 
     private final LoadingCache<String, Integer> nodeIdCache = CacheBuilder.newBuilder()
             .maximumSize(10_000)
@@ -143,9 +145,10 @@ public class DatabaseShardManager
             NodeSupplier nodeSupplier,
             AssignmentLimiter assignmentLimiter,
             Ticker ticker,
-            MetadataConfig config)
+            MetadataConfig config,
+            Optional<BackupStore> backupStore)
     {
-        this(dbi, shardDaoSupplier, nodeSupplier, assignmentLimiter, ticker, config.getStartupGracePeriod());
+        this(dbi, shardDaoSupplier, nodeSupplier, assignmentLimiter, ticker, config.getStartupGracePeriod(), backupStore);
     }
 
     public DatabaseShardManager(
@@ -154,7 +157,8 @@ public class DatabaseShardManager
             NodeSupplier nodeSupplier,
             AssignmentLimiter assignmentLimiter,
             Ticker ticker,
-            Duration startupGracePeriod)
+            Duration startupGracePeriod,
+            Optional<BackupStore> backupStore)
     {
         this.dbi = requireNonNull(dbi, "dbi is null");
         this.shardDaoSupplier = requireNonNull(shardDaoSupplier, "shardDaoSupplier is null");
@@ -164,6 +168,7 @@ public class DatabaseShardManager
         this.ticker = requireNonNull(ticker, "ticker is null");
         this.startupGracePeriod = requireNonNull(startupGracePeriod, "startupGracePeriod is null");
         this.startTime = ticker.read();
+        this.backupStore = backupStore;
 
         createTablesWithRetry(dbi);
     }
@@ -238,6 +243,21 @@ public class DatabaseShardManager
     {
         runTransaction(dbi, (handle, status) -> {
             lockTable(handle, tableId);
+
+            String shardsSelect = format("SELECT shard_uuid\n" +
+            "FROM shards\n" +
+            "WHERE table_id = %s", tableId);
+
+            try (PreparedStatement statement = handle.getConnection().prepareStatement(shardsSelect)) {
+                ResultSet rs = statement.executeQuery();
+                String uuid;
+                while (rs.next()) {
+                    uuid = rs.getString("shard_uuid");
+                }
+            }
+            catch (SQLException e) {
+                return false;
+            }
 
             ShardDao shardDao = shardDaoSupplier.attach(handle);
             shardDao.insertDeletedShards(tableId);

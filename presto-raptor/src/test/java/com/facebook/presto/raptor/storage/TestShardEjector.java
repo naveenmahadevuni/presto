@@ -202,7 +202,7 @@ public class TestShardEjector
             implements BackupStore
     {
         @Override
-        public void backupShard(UUID uuid, File source)
+        public void backupShard(UUID uuid, File source, String schemaTableName)
         {
             throw new UnsupportedOperationException();
         }
@@ -224,5 +224,11 @@ public class TestShardEjector
         {
             return true;
         }
+
+       @Override
+       public boolean canDeleteShard(UUID uuid)
+       {
+           return true;
+       }
     }
 }

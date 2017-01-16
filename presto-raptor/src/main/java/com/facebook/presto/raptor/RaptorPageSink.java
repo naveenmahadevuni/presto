@@ -65,6 +65,7 @@ public class RaptorPageSink
     private final long maxBufferBytes;
     private final OptionalInt temporalColumnIndex;
     private final Optional<Type> temporalColumnType;
+    private final String schemaTableName;
 
     private final PageWriter pageWriter;
 
@@ -80,7 +81,8 @@ public class RaptorPageSink
             OptionalInt bucketCount,
             List<Long> bucketColumnIds,
             Optional<RaptorColumnHandle> temporalColumnHandle,
-            DataSize maxBufferSize)
+            DataSize maxBufferSize,
+            String schemaTableName)
     {
         this.transactionId = transactionId;
         this.pageSorter = requireNonNull(pageSorter, "pageSorter is null");
@@ -106,6 +108,8 @@ public class RaptorPageSink
             temporalColumnIndex = OptionalInt.empty();
             temporalColumnType = Optional.empty();
         }
+
+        this.schemaTableName = schemaTableName;
 
         this.pageWriter = (bucketCount.isPresent() || temporalColumnIndex.isPresent()) ? new PartitionedPageWriter() : new SimplePageWriter();
     }
@@ -161,7 +165,7 @@ public class RaptorPageSink
     {
         return new PageBuffer(
                 maxBufferBytes,
-                storageManager.createStoragePageSink(transactionId, bucketNumber, columnIds, columnTypes, true),
+                storageManager.createStoragePageSink(transactionId, bucketNumber, columnIds, columnTypes, true, schemaTableName),
                 columnTypes,
                 sortFields,
                 sortOrders,

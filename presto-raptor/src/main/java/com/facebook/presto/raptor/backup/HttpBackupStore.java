@@ -73,7 +73,7 @@ public class HttpBackupStore
     }
 
     @Override
-    public void backupShard(UUID uuid, File source)
+    public void backupShard(UUID uuid, File source, String tableName)
     {
         Request request = preparePut()
                 .addHeader(PRESTO_ENVIRONMENT, environment)
@@ -160,6 +160,12 @@ public class HttpBackupStore
         catch (RuntimeException e) {
             throw new PrestoException(RAPTOR_BACKUP_ERROR, "Failed to check if shard exists: " + uuid, e);
         }
+    }
+
+    @Override
+    public boolean canDeleteShard(UUID uuid)
+    {
+        return true;
     }
 
     private URI shardUri(UUID uuid)

@@ -24,6 +24,7 @@ import com.facebook.presto.raptor.RaptorSplitManager;
 import com.facebook.presto.raptor.RaptorTableHandle;
 import com.facebook.presto.raptor.RaptorTableLayoutHandle;
 import com.facebook.presto.raptor.RaptorTransactionHandle;
+import com.facebook.presto.raptor.backup.BackupStore;
 import com.facebook.presto.raptor.util.DaoSupplier;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorSplitSource;
@@ -99,7 +100,8 @@ public class TestRaptorSplitManager
         dummyHandle = dbi.open();
         temporary = createTempDir();
         AssignmentLimiter assignmentLimiter = new AssignmentLimiter(ImmutableSet::of, systemTicker(), new MetadataConfig());
-        shardManager = new DatabaseShardManager(dbi, new DaoSupplier<>(dbi, ShardDao.class), ImmutableSet::of, assignmentLimiter, systemTicker(), new Duration(0, MINUTES));
+        Optional<BackupStore> backupStore = null;
+        shardManager = new DatabaseShardManager(dbi, new DaoSupplier<>(dbi, ShardDao.class), ImmutableSet::of, assignmentLimiter, systemTicker(), new Duration(0, MINUTES), backupStore);
         TestingNodeManager nodeManager = new TestingNodeManager();
         NodeSupplier nodeSupplier = nodeManager::getWorkerNodes;
 

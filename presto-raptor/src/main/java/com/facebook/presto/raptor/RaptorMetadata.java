@@ -659,7 +659,8 @@ public class RaptorMetadata
                 nCopies(sortColumnHandles.size(), ASC_NULLS_FIRST),
                 handle.getBucketCount(),
                 bucketColumnHandles,
-                temporalColumnHandle);
+                temporalColumnHandle,
+                handle.getSchemaName() + "." + handle.getTableName());
     }
 
     private List<RaptorColumnHandle> getSortColumnHandles(long tableId)

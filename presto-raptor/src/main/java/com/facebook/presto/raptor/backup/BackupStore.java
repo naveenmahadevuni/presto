@@ -24,7 +24,7 @@ public interface BackupStore
      * @param uuid shard UUID
      * @param source the source file
      */
-    void backupShard(UUID uuid, File source);
+    void backupShard(UUID uuid, File source, String tableName);
 
     /**
      * Restore a shard by copying it from the backup store.
@@ -49,4 +49,11 @@ public interface BackupStore
      * @return if the shard exists
      */
     boolean shardExists(UUID uuid);
+
+    /**
+     * Check if this shard can be deleted. If this shard data under retention?
+     * @param uuid
+     * @return if this shard can be deleted
+     */
+    boolean canDeleteShard(UUID uuid);
 }

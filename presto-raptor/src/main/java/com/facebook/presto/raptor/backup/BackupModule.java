@@ -14,6 +14,8 @@
 package com.facebook.presto.raptor.backup;
 
 import com.facebook.presto.raptor.RaptorConnectorId;
+//import com.facebook.presto.raptor.backup.metadata.BackupMetadataDao;
+//import com.facebook.presto.raptor.backup.metadata.BackupMetadataManager;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Binder;
 import com.google.inject.Module;
@@ -71,6 +73,7 @@ public class BackupModule
             }
         }
         binder.bind(BackupService.class).to(BackupServiceManager.class).in(Scopes.SINGLETON);
+        //binder.bind(BackupMetadataManager.class).in(Scopes.SINGLETON);
     }
 
     @Provides

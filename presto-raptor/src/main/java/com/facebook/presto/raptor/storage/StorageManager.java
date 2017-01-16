@@ -50,5 +50,6 @@ public interface StorageManager
             OptionalInt bucketNumber,
             List<Long> columnIds,
             List<Type> columnTypes,
-            boolean checkSpace);
+            boolean checkSpace,
+            String schemaTableName);
 }

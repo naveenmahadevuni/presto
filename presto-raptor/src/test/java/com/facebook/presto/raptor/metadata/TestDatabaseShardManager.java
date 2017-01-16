@@ -17,6 +17,7 @@ import com.facebook.presto.client.NodeVersion;
 import com.facebook.presto.metadata.PrestoNode;
 import com.facebook.presto.raptor.NodeSupplier;
 import com.facebook.presto.raptor.RaptorColumnHandle;
+import com.facebook.presto.raptor.backup.BackupStore;
 import com.facebook.presto.raptor.util.DaoSupplier;
 import com.facebook.presto.spi.Node;
 import com.facebook.presto.spi.PrestoException;
@@ -707,7 +708,8 @@ public class TestDatabaseShardManager
     {
         DaoSupplier<ShardDao> shardDaoSupplier = new DaoSupplier<>(dbi, H2ShardDao.class);
         AssignmentLimiter assignmentLimiter = new AssignmentLimiter(nodeSupplier, ticker, new MetadataConfig());
-        return new DatabaseShardManager(dbi, shardDaoSupplier, nodeSupplier, assignmentLimiter, ticker, new Duration(1, DAYS));
+        Optional<BackupStore> backupStore = null;
+        return new DatabaseShardManager(dbi, shardDaoSupplier, nodeSupplier, assignmentLimiter, ticker, new Duration(1, DAYS), backupStore);
     }
 
     private static Domain createDomain(Range first, Range... ranges)

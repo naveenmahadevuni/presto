@@ -371,7 +371,7 @@ public class TestShardCleaner
         for (UUID uuid : uuids) {
             File file = new File(temporary, "empty-" + randomUUID());
             assertTrue(file.createNewFile());
-            backupStore.backupShard(uuid, file);
+            backupStore.backupShard(uuid, file, null);
         }
     }
 

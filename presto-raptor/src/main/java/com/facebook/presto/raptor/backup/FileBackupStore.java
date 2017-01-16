@@ -56,7 +56,7 @@ public class FileBackupStore
     }
 
     @Override
-    public void backupShard(UUID uuid, File source)
+    public void backupShard(UUID uuid, File source, String tableName)
     {
         File backupFile = getBackupFile(uuid);
 
@@ -104,6 +104,12 @@ public class FileBackupStore
     public boolean shardExists(UUID uuid)
     {
         return getBackupFile(uuid).isFile();
+    }
+
+    @Override
+    public boolean canDeleteShard(UUID uuid)
+    {
+        return true;
     }
 
     @VisibleForTesting

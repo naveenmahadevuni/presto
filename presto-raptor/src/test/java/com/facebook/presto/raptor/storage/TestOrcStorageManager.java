@@ -539,7 +539,7 @@ public class TestOrcStorageManager
     private static StoragePageSink createStoragePageSink(StorageManager manager, List<Long> columnIds, List<Type> columnTypes)
     {
         long transactionId = TRANSACTION_ID;
-        return manager.createStoragePageSink(transactionId, OptionalInt.empty(), columnIds, columnTypes, false);
+        return manager.createStoragePageSink(transactionId, OptionalInt.empty(), columnIds, columnTypes, false, null);
     }
 
     private OrcStorageManager createOrcStorageManager()
