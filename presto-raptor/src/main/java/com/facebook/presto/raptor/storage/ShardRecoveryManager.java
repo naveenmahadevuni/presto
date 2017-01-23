@@ -126,9 +126,9 @@ public class ShardRecoveryManager
         if (!backupStore.isPresent()) {
             return;
         }
-        if (started.compareAndSet(false, true)) {
-            enqueueMissingShards();
-        }
+        //if (started.compareAndSet(false, true)) {
+            //enqueueMissingShards();
+        //}
     }
 
     @PreDestroy

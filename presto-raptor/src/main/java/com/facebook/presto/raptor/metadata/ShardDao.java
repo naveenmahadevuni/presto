@@ -206,5 +206,11 @@ public interface ShardDao
             @Bind("bucketNumber") int bucketNumber,
             @Bind("nodeId") int nodeId);
 
+    @SqlUpdate("INSERT INTO shards_cleanup_stats (shard_uuid, node_identifier, last_cleanup_time)\n" +
+            "VALUES (:shardUuid, :nodeIdentifier, CURRENT_TIMESTAMP)")
+    void insertCleanedupShards(
+            @Bind("shardUuid") UUID shardUuid,
+            @Bind("nodeIdentifier") String nodeIdentifier);
+
     int deleteOldCompletedTransactions(@Bind("maxEndTime") Timestamp maxEndTime);
 }

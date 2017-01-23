@@ -141,8 +141,8 @@ public class ShardOrganizationManager
                 // jitter to avoid overloading database
                 SECONDS.sleep(ThreadLocalRandom.current().nextLong(1, 5 * 60));
 
-                log.info("Running shard organizer...");
-                submitJobs(discoverAndInitializeTablesToOrganize());
+                //log.info("Running shard organizer...");
+                //submitJobs(discoverAndInitializeTablesToOrganize());
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

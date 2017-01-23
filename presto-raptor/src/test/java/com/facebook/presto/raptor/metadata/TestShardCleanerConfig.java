@@ -14,6 +14,8 @@
 package com.facebook.presto.raptor.metadata;
 
 import com.google.common.collect.ImmutableMap;
+
+import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.testng.annotations.Test;
 
@@ -22,6 +24,7 @@ import java.util.Map;
 import static io.airlift.configuration.testing.ConfigAssertions.assertFullMapping;
 import static io.airlift.configuration.testing.ConfigAssertions.assertRecordedDefaults;
 import static io.airlift.configuration.testing.ConfigAssertions.recordDefaults;
+import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -36,6 +39,10 @@ public class TestShardCleanerConfig
                 .setTransactionCleanerInterval(new Duration(10, MINUTES))
                 .setLocalCleanerInterval(new Duration(1, HOURS))
                 .setLocalCleanTime(new Duration(4, HOURS))
+                .setOldLocalShardCleanerInterval(new Duration(31, MINUTES))
+                .setOldLocalShardCleanTime(new Duration(5, MINUTES))
+                .setLocalShardSpaceCheckInterval(new Duration(31, MINUTES))
+                .setMinDiskSpaceLoadQuery(new DataSize(2560, MEGABYTE))
                 .setBackupCleanerInterval(new Duration(5, MINUTES))
                 .setBackupCleanTime(new Duration(1, DAYS))
                 .setBackupDeletionThreads(50)
@@ -50,6 +57,10 @@ public class TestShardCleanerConfig
                 .put("raptor.transaction-cleaner-interval", "43m")
                 .put("raptor.local-cleaner-interval", "31m")
                 .put("raptor.local-clean-time", "32m")
+                .put("raptor.old-local-shard-cleaner-interval", "31m")
+                .put("raptor.old-local-shard-clean-time", "5m")
+                .put("raptor.local-shard-space-check-interval", "31m")
+                .put("raptor.min-disk-space-load-query", "2560MB")
                 .put("raptor.backup-cleaner-interval", "34m")
                 .put("raptor.backup-clean-time", "35m")
                 .put("raptor.backup-deletion-threads", "37")
@@ -61,6 +72,10 @@ public class TestShardCleanerConfig
                 .setTransactionCleanerInterval(new Duration(43, MINUTES))
                 .setLocalCleanerInterval(new Duration(31, MINUTES))
                 .setLocalCleanTime(new Duration(32, MINUTES))
+                .setOldLocalShardCleanerInterval(new Duration(31, MINUTES))
+                .setOldLocalShardCleanTime(new Duration(5, MINUTES))
+                .setLocalShardSpaceCheckInterval(new Duration(31, MINUTES))
+                .setMinDiskSpaceLoadQuery(new DataSize(2560, MEGABYTE))
                 .setBackupCleanerInterval(new Duration(34, MINUTES))
                 .setBackupCleanTime(new Duration(35, MINUTES))
                 .setBackupDeletionThreads(37)
