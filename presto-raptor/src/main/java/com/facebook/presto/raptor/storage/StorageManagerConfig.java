@@ -51,7 +51,7 @@ public class StorageManagerConfig
     private int deletionThreads = max(1, getRuntime().availableProcessors() / 2);
     private int recoveryThreads = 10;
     private int organizationThreads = 5;
-    private boolean organizationEnabled = true;
+    private boolean organizationEnabled = false;
     private Duration organizationInterval = new Duration(7, TimeUnit.DAYS);
 
     private long maxShardRows = 1_000_000;
