@@ -164,7 +164,7 @@ public interface SchemaDao
             "  last_cleanup_time DATETIME NOT NULL,\n" +
             "  PRIMARY KEY (shard_uuid, last_cleanup_time),\n" +
             "  UNIQUE (shard_uuid, node_identifier, last_cleanup_time),\n" +
-            "  FOREIGN KEY (shard_uuid) REFERENCES tables (shard_uuid)\n" +
+            "  FOREIGN KEY (shard_uuid) REFERENCES shards (shard_uuid)\n" +
             ")")
     void createTableShardsCleanupStats();
 }
