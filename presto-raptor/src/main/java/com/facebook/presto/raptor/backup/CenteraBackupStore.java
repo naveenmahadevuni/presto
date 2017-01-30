@@ -14,7 +14,6 @@
 package com.facebook.presto.raptor.backup;
 
 import com.facebook.presto.raptor.backup.metadata.BackupMetadataDao;
-//import com.facebook.presto.raptor.backup.metadata.BackupMetadataManager;
 import com.facebook.presto.raptor.metadata.ForMetadata;
 import com.facebook.presto.raptor.util.DaoSupplier;
 import com.facebook.presto.spi.PrestoException;
@@ -77,7 +76,7 @@ public class CenteraBackupStore implements BackupStore
 
     private final IDBI dbi;
     private final BackupMetadataDao dao;
-    // private final BackupMetadataManager backupMetadataManager;
+
     private final DaoSupplier<BackupMetadataDao> backupMetadataDaoSupplier;
 
     private Logger logger = Logger.get(this.getClass());
@@ -113,9 +112,16 @@ public class CenteraBackupStore implements BackupStore
     public void readConfigProperties()
     {
         try {
-            FileInputStream configIs = new FileInputStream(new File(config.getConfigFilePath()));
-            configProperties.load(configIs);
-            lastConfigAccessTime = System.currentTimeMillis() / 1000L;
+            // If the config file has changed in the mean while, reload the properties.
+            Path path = Paths.get(config.getConfigFilePath());
+            BasicFileAttributes fileAttr = Files.readAttributes(path, BasicFileAttributes.class);
+
+            if ((fileAttr.creationTime().toMillis() / 1000L) > lastConfigAccessTime ||
+                    (fileAttr.lastModifiedTime().toMillis() / 1000L) > lastConfigAccessTime) {
+                FileInputStream configIs = new FileInputStream(new File(config.getConfigFilePath()));
+                configProperties.load(configIs);
+                lastConfigAccessTime = System.currentTimeMillis() / 1000L;
+            }
         }
         catch (FileNotFoundException e) {
             throw new PrestoException(RAPTOR_BACKUP_NOT_FOUND, "File " + config.getConfigFilePath() + " not found. " + e);
@@ -132,33 +138,21 @@ public class CenteraBackupStore implements BackupStore
         Long retentionPeriod = null;
         String retentionClass = null;
 
-        try {
-            // If the config file has changed in the mean while, reload the properties.
-            Path path = Paths.get(config.getConfigFilePath());
-            BasicFileAttributes fileAttr = Files.readAttributes(path, BasicFileAttributes.class);
-
-            if ((fileAttr.creationTime().toMillis() / 1000L) > lastConfigAccessTime ||
-                    (fileAttr.lastModifiedTime().toMillis() / 1000L) > lastConfigAccessTime) {
-                readConfigProperties();
-            }
-        }
-        catch (IOException e) {
-            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Failed to read attributes for " + config.getConfigFilePath() + e);
-        }
+        readConfigProperties();
 
         // Optimistically assume the file can be created
-        logger.info("Attempting to Write shard %s to centera.", source.getPath());
+        logger.info("Attempting to Write shard " + source.getPath() + " to centera.");
         try {
             if (schemaTableName != null) {
                 String tableRetentionOption = configProperties.getProperty("retention." + schemaTableName.toLowerCase());
 
-                logger.info("Retention option for table %s is %s ", schemaTableName, tableRetentionOption);
+                logger.debug("Retention option for table " + schemaTableName + " is " + tableRetentionOption);
 
                 if (tableRetentionOption != null) {
                     Boolean applyRetention = tableRetentionOption.equalsIgnoreCase("true");
 
                     if (applyRetention) {
-                        logger.info("Getting retention period/class from properties for table %s", schemaTableName);
+                        logger.debug("Getting retention period/class from properties for table " + schemaTableName);
                         retentionPeriod = getRetentionPeriod(schemaTableName);
                         if (retentionPeriod == null) {
                             retentionClass = getRetentionClass(schemaTableName);
@@ -168,12 +162,12 @@ public class CenteraBackupStore implements BackupStore
             }
 
             if (retentionPeriod == null && retentionClass == null) {
-                logger.info("Retention period or class is not set for table %s ", schemaTableName);
+                logger.debug("Retention period or class is not set for table " + schemaTableName);
             }
 
             clipInfo = storeFile(source, retentionPeriod, retentionClass);
             // Write UUID, clipInfo to the metadata
-            logger.info("Writing clipInfo for clip %s for shard %s to metadata.", clipInfo.getClipid(), uuid.toString());
+            logger.debug("Writing clipInfo for clip " + clipInfo.getClipid() + " for metadata for shard " + uuid.toString());
             writeClipInfoToMetadata(uuid, clipInfo, retentionClass);
         }
         catch (FPLibraryException e) {
@@ -185,7 +179,7 @@ public class CenteraBackupStore implements BackupStore
     {
         String retentionPeriodConfig = configProperties.getProperty("retention.period." + schemaTableName.toLowerCase());
 
-        logger.info("Retention Period specified for table %s is %s ", schemaTableName, retentionPeriodConfig);
+        logger.debug("Retention Period specified for table " + schemaTableName + " is " + retentionPeriodConfig);
         if (retentionPeriodConfig != null) {
             return Long.parseLong(retentionPeriodConfig);
         }
@@ -241,7 +235,7 @@ public class CenteraBackupStore implements BackupStore
         }
 
         if (deleted) {
-            logger.info("Deleting shard info with UUID " + uuid.toString() + " from centera backup metadata");
+            logger.debug("Deleting shard info with UUID " + uuid.toString() + " from centera backup metadata");
             dao.deleteCenteraClipInfoForShard(uuid.toString());
         }
         return deleted;
@@ -259,22 +253,28 @@ public class CenteraBackupStore implements BackupStore
     @Override
     public boolean canDeleteShard(UUID uuid)
     {
-       // ClipRetentionInfo info = dao.getClipRetentionInfo(uuid.toString());
+        // ClipRetentionInfo info = dao.getClipRetentionInfo(uuid.toString());
         Timestamp creationDate;
         long retentionPeriod = 0L;
 
         String selectRetentionInfo = format("" +
                 "SELECT creation_date, retention_period from backup_centera \n" +
-                "WHERE shard_uuid = %s", uuid.toString());
+                "WHERE shard_uuid = '%s'", uuid.toString());
 
         try (Handle handle = dbi.open()) {
             PreparedStatement statement = handle.getConnection().prepareStatement(selectRetentionInfo);
+            logger.debug("Getting shard creation date and retention period from metadata for shard " + uuid.toString() + "Running query " + selectRetentionInfo);
             ResultSet rs = statement.executeQuery();
-            creationDate = rs.getTimestamp("creation_date");
-            retentionPeriod = rs.getLong("retention_period");
+            if (rs.next()) {
+                creationDate = rs.getTimestamp("creation_date");
+                retentionPeriod = rs.getLong("retention_period");
+            }
+            else {
+                return true;
+            }
         }
         catch (SQLException e) {
-            return false;
+            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Caught SQLException while checking if a backup shard can be deleted ", e);
         }
 
         long clipAge = 0L;
@@ -318,7 +318,7 @@ public class CenteraBackupStore implements BackupStore
                     theClip.setRetentionPeriod(fpRetentionClass.getPeriod());
                 }
                 catch (FPLibraryException e) {
-                    logger.info("Retention class %s is invalid. Ignoring and continuing ..", retentionClass);
+                    logger.info("Retention class " + retentionClass + " is invalid. Ignoring and continuing ..");
                 }
             }
 
@@ -333,8 +333,31 @@ public class CenteraBackupStore implements BackupStore
             // Blob size is written to clip, so lets just write out filename.
             newTag.setAttribute("filename", source.getPath());
 
+            String minChunkSizeProp = configProperties.getProperty("centera.min_chunk_size");
+            int minChunkSize = 0;
+
+            if (minChunkSizeProp != null) {
+                minChunkSize = Integer.parseInt(minChunkSizeProp);
+            }
+
+            String chunkCountProp = configProperties.getProperty("centera.chunk_count");
+            int chunkCount = 2;
+
+            if (chunkCountProp != null) {
+                chunkCount = Integer.parseInt(chunkCountProp);
+                chunkCount = chunkCount < 2 ? 2 : chunkCount;
+            }
+
             // write the binary data for this tag to the Centera
-            newTag.BlobWrite(inputStream);
+            if (minChunkSize <= 0 || source.length() < minChunkSize) {
+                logger.debug("Writing shard file " + source.getPath() + " as single stream to centera");
+                newTag.BlobWrite(inputStream);
+            }
+            else {
+                // Write the shard in chunks to centera
+                logger.debug("Attempting to write shard file " + source.getPath() + " in chunks to centera");
+                writeChunkedBlob(newTag, source, chunkCount);
+            }
 
             clipId = theClip.Write();
 
@@ -350,8 +373,75 @@ public class CenteraBackupStore implements BackupStore
         catch (IOException e) {
             throw new PrestoException(RAPTOR_BACKUP_ERROR, "Could not read from file " + source.getPath());
         }
+        catch (Exception e) {
+            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Exception while writing shard to centera ", e);
+        }
 
         return clipInfo;
+    }
+
+    private void writeChunkedBlob(FPTag newTag, File inFile, int chunkCount) throws Exception
+    {
+        Exception lastException = null;
+
+        long chunkBytes = inFile.length() / chunkCount;
+        long lastChunkBytes = inFile.length() - ((chunkCount - 1) * chunkBytes);
+
+        if (chunkBytes <= 0 || lastChunkBytes <= 0) {
+            // if we could not write as chunks, write as single stream.
+            FPFileInputStream inputStream = new FPFileInputStream(inFile);
+            newTag.BlobWrite(inputStream);
+            return;
+        }
+
+        // create array of writer objects, each pointing to its section of the input file
+
+        CenteraPartialFileInputStream[] streams = new CenteraPartialFileInputStream[chunkCount];
+        CenteraChunkWriter[] writers = new CenteraChunkWriter[chunkCount];
+        Thread[] workers = new Thread[chunkCount];
+
+        logger.debug("Writing shard file " + inFile.getPath() + " in chunks to centera");
+        for (int s = 0; s < chunkCount; ++s) {
+            long chunkLen = (s < (chunkCount - 1)) ? chunkBytes : lastChunkBytes;
+            long chunkOffset = s * chunkBytes;
+
+            streams[s] = new CenteraPartialFileInputStream(inFile, chunkOffset, chunkLen);
+            writers[s] = new CenteraChunkWriter(newTag, streams[s],
+                    FPLibraryConstants.FP_OPTION_CLIENT_CALCID_STREAMING,
+                    s);
+            workers[s] = new Thread(writers[s]);
+
+            // fire it up
+            workers[s].start();
+        }
+
+        //
+        // Now we wait for all of the worker threads to complete, order is unimportant
+        //
+        String logMsg = "Worker Thread completions: ";
+        for (int s = 0; s < chunkCount; ++s) {
+            try {
+                workers[s].join();
+
+                if (0 == writers[s].getmStatus()) {
+                    logger.debug(logMsg + s + ":" + "success");
+                }
+                else {
+                    logger.error(logMsg + s + ":" + "errcode=" + writers[s].getmStatus());
+                    lastException = writers[s].getmException();
+                }
+            }
+            catch (InterruptedException e) {
+                logger.debug("Thread number " + s + " was unexpectedly interrupted.");
+            }
+            finally {
+                streams[s].close();
+            }
+        }
+
+        if (null != lastException) {
+            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Exception occurred while writing shard file " + inFile.getPath() + " in chunks to centera", lastException);
+        }
     }
 
     private void retrieveShard(UUID uuid, File saveFilename) throws FileNotFoundException, IOException
@@ -365,19 +455,19 @@ public class CenteraBackupStore implements BackupStore
             }
 
             // Contact cluster to load C-Clip
-            logger.info("Attempting to retrieve C-Clip with clip ID: " + clipId + " ... ");
+            logger.debug("Attempting to retrieve C-Clip with clip ID: " + clipId + " ... ");
 
             FPClip theClip = new FPClip(thePool, clipId, FPLibraryConstants.FP_OPEN_FLAT);
 
-            logger.info("Retrieve of clip " + clipId + " Successful");
+            logger.debug("Retrieve of clip " + clipId + " Successful");
 
             FPTag topTag = theClip.getTopTag();
 
             // check clip metadata to see if this is 'our' data format
             if (!topTag.getTagName().equals(tagName)) {
-                logger.error("This clip was not written by Raptor.");
-                logger.error(topTag.getTagName());
-                logger.error(tagName);
+                logger.info("This clip was not written by Raptor.");
+                logger.info(topTag.getTagName());
+                logger.info(tagName);
             }
 
             // Save blob data to file 'OrigFilename.out'
@@ -389,10 +479,10 @@ public class CenteraBackupStore implements BackupStore
             theClip.Close();
         }
         catch (FPLibraryException e) {
-            logger.error("Centera SDK Error: " + e.getMessage());
+            logger.info("Centera SDK Error: " + e.getMessage());
         }
         catch (IOException e) {
-            logger.error("IO Error occured: " + e.getMessage());
+            logger.info("IO Error occured: " + e.getMessage());
         }
     }
 
@@ -643,7 +733,7 @@ public class CenteraBackupStore implements BackupStore
                     setModificationDate(new Timestamp(date.getTime()));
                 }
                 catch (ParseException e) {
-                    logger.error("Date conversion Error: ", e);
+                    logger.info("Date conversion Error:");
                 }
 
                 setCreationProfile(attributeMap.get("creation.profile"));

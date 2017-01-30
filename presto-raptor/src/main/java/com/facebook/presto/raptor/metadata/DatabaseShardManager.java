@@ -244,19 +244,8 @@ public class DatabaseShardManager
         runTransaction(dbi, (handle, status) -> {
             lockTable(handle, tableId);
 
-            String shardsSelect = format("SELECT shard_uuid\n" +
-            "FROM shards\n" +
-            "WHERE table_id = %s", tableId);
-
-            try (PreparedStatement statement = handle.getConnection().prepareStatement(shardsSelect)) {
-                ResultSet rs = statement.executeQuery();
-                String uuid;
-                while (rs.next()) {
-                    uuid = rs.getString("shard_uuid");
-                }
-            }
-            catch (SQLException e) {
-                return false;
+            if (!canDropTable(tableId, handle)) {
+                throw new PrestoException(RAPTOR_ERROR, "Cannot drop table. Data is found to be under retention for one or more partitions in this table.");
             }
 
             ShardDao shardDao = shardDaoSupplier.attach(handle);
@@ -280,6 +269,28 @@ public class DatabaseShardManager
         catch (DBIException e) {
             log.warn(e, "Failed to drop index table %s", shardIndexTable(tableId));
         }
+    }
+
+    private boolean canDropTable(long tableId, Handle handle)
+    {
+        String shardsSelect = format("SELECT shard_uuid\n" +
+        "FROM shards\n" +
+        "WHERE table_id = %s", tableId);
+
+        try (PreparedStatement statement = handle.getConnection().prepareStatement(shardsSelect)) {
+            ResultSet rs = statement.executeQuery();
+            UUID uuid;
+            while (rs.next()) {
+                uuid = uuidFromBytes(rs.getBytes("shard_uuid"));
+                if (backupStore.isPresent() && !backupStore.get().canDeleteShard(uuid)) {
+                    return false;
+                }
+            }
+        }
+        catch (SQLException e) {
+            throw metadataError(e);
+        }
+        return true;
     }
 
     @Override

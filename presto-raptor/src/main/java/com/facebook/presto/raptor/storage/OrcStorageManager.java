@@ -384,7 +384,7 @@ public class OrcStorageManager
         }
 
         if (backupStore.isPresent() && !backupStore.get().canDeleteShard(shardUuid)) {
-            throw new PrestoException(RAPTOR_ERROR, "Data is under retention for a shard for this table. Cannot delete rows");
+            throw new PrestoException(RAPTOR_ERROR, "Data is found to be under retention for a partition in this table. Cannot delete rows");
         }
 
         UUID newShardUuid = UUID.randomUUID();
