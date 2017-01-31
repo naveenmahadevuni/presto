@@ -13,14 +13,10 @@
  */
 package com.facebook.presto.raptor.backup;
 
-import com.facebook.presto.spi.PrestoException;
-
 import com.filepool.fplibrary.FPLibraryException;
 import com.filepool.fplibrary.FPTag;
 
 import io.airlift.log.Logger;
-
-import static com.facebook.presto.raptor.RaptorErrorCode.RAPTOR_BACKUP_ERROR;
 
 public class CenteraChunkWriter implements Runnable
 {
@@ -72,14 +68,12 @@ public class CenteraChunkWriter implements Runnable
             logger.debug("Completed transfer of chunk number" + mSequenceId);
         }
         catch (FPLibraryException e) {
-            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Centera write exception occurred when writing chunk " + mSequenceId + e);
-            /*mException = e;
-            mStatus = e.getErrorCode();*/
+            mException = e;
+            mStatus = e.getErrorCode();
         }
         catch (Exception e) {
-            throw new PrestoException(RAPTOR_BACKUP_ERROR, "Unknown exception occurred when writing chunk " + mSequenceId + e);
-            /*mException = e;
-            mStatus = -1;*/
+            mException = e;
+            mStatus = -1;
         }
     }
 }
