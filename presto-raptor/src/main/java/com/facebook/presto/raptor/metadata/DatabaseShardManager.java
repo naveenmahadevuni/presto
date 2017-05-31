@@ -73,6 +73,7 @@ import static com.facebook.presto.raptor.storage.ShardStats.MAX_BINARY_INDEX_SIZ
 import static com.facebook.presto.raptor.util.ArrayUtil.intArrayFromBytes;
 import static com.facebook.presto.raptor.util.ArrayUtil.intArrayToBytes;
 import static com.facebook.presto.raptor.util.DatabaseUtil.bindOptionalInt;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.isSyntaxOrAccessError;
 import static com.facebook.presto.raptor.util.DatabaseUtil.metadataError;
 import static com.facebook.presto.raptor.util.DatabaseUtil.runIgnoringConstraintViolation;
@@ -115,6 +116,7 @@ public class DatabaseShardManager
     private final Duration startupGracePeriod;
     private final long startTime;
     private final Optional<BackupStore> backupStore;
+    private final Class<MetadataDao> metadataDaoType;
 
     private final LoadingCache<String, Integer> nodeIdCache = CacheBuilder.newBuilder()
             .maximumSize(10_000)
@@ -163,6 +165,7 @@ public class DatabaseShardManager
         this.dbi = requireNonNull(dbi, "dbi is null");
         this.shardDaoSupplier = requireNonNull(shardDaoSupplier, "shardDaoSupplier is null");
         this.dao = shardDaoSupplier.onDemand();
+        this.metadataDaoType = getMetadataDaoType(dbi);
         this.nodeSupplier = requireNonNull(nodeSupplier, "nodeSupplier is null");
         this.assignmentLimiter = requireNonNull(assignmentLimiter, "assignmentLimiter is null");
         this.ticker = requireNonNull(ticker, "ticker is null");
@@ -171,6 +174,71 @@ public class DatabaseShardManager
         this.backupStore = backupStore;
 
         createTablesWithRetry(dbi);
+    }
+
+    private String getBucketedShardIndexTableDDL(String dbType, long tableId, StringJoiner tableColumns, StringJoiner coveringIndexColumns)
+    {
+        String sql;
+        if (dbType.equalsIgnoreCase("postgresql")) {
+            sql = "" +
+                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
+                    "  shard_id BIGINT NOT NULL,\n" +
+                    "  shard_uuid BYTEA NOT NULL,\n" +
+                    "  bucket_number INT NOT NULL\n," +
+                    tableColumns +
+                    "  PRIMARY KEY (bucket_number, shard_uuid),\n" +
+                    "  UNIQUE (shard_id),\n" +
+                    "  UNIQUE (shard_uuid),\n" +
+                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
+                    ")";
+        }
+        else {
+            sql = "" +
+                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
+                    "  shard_id BIGINT NOT NULL,\n" +
+                    "  shard_uuid BINARY(16) NOT NULL,\n" +
+                    "  bucket_number INT NOT NULL\n," +
+                    tableColumns +
+                    "  PRIMARY KEY (bucket_number, shard_uuid),\n" +
+                    "  UNIQUE (shard_id),\n" +
+                    "  UNIQUE (shard_uuid),\n" +
+                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
+                    ")";
+        }
+        return sql;
+    }
+
+    private String getNonBucketedShardIndexTableDDL(String dbType, long tableId, StringJoiner tableColumns, StringJoiner coveringIndexColumns)
+    {
+        String sql;
+        if (dbType.equalsIgnoreCase("postgresql")) {
+            sql = "" +
+                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
+                    "  shard_id BIGINT NOT NULL,\n" +
+                    "  shard_uuid BYTEA NOT NULL,\n" +
+                    "  node_ids BYTEA NOT NULL,\n" +
+                    tableColumns +
+                    "  PRIMARY KEY (node_ids, shard_uuid),\n" +
+                    "  UNIQUE (shard_id),\n" +
+                    "  UNIQUE (shard_uuid),\n" +
+                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
+                    ")";
+        }
+        else {
+            sql = "" +
+                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
+                    "  shard_id BIGINT NOT NULL,\n" +
+                    "  shard_uuid BINARY(16) NOT NULL,\n" +
+                    "  node_ids VARBINARY(128) NOT NULL,\n" +
+                    tableColumns +
+                    "  PRIMARY KEY (node_ids, shard_uuid),\n" +
+                    "  UNIQUE (shard_id),\n" +
+                    "  UNIQUE (shard_uuid),\n" +
+                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
+                    ")";
+        }
+
+        return sql;
     }
 
     @Override
@@ -192,48 +260,32 @@ public class DatabaseShardManager
         temporalColumnId.ifPresent(id -> coveringIndexColumns.add(maxColumn(id)));
         temporalColumnId.ifPresent(id -> coveringIndexColumns.add(minColumn(id)));
 
-        String sql;
-        if (bucketed) {
-            coveringIndexColumns
-                    .add("bucket_number")
-                    .add("shard_id")
-                    .add("shard_uuid");
-
-            sql = "" +
-                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
-                    "  shard_id BIGINT NOT NULL,\n" +
-                    "  shard_uuid BINARY(16) NOT NULL,\n" +
-                    "  bucket_number INT NOT NULL\n," +
-                    tableColumns +
-                    "  PRIMARY KEY (bucket_number, shard_uuid),\n" +
-                    "  UNIQUE (shard_id),\n" +
-                    "  UNIQUE (shard_uuid),\n" +
-                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
-                    ")";
-        }
-        else {
-            coveringIndexColumns
-                    .add("node_ids")
-                    .add("shard_id")
-                    .add("shard_uuid");
-
-            sql = "" +
-                    "CREATE TABLE " + shardIndexTable(tableId) + " (\n" +
-                    "  shard_id BIGINT NOT NULL,\n" +
-                    "  shard_uuid BINARY(16) NOT NULL,\n" +
-                    "  node_ids VARBINARY(128) NOT NULL,\n" +
-                    tableColumns +
-                    "  PRIMARY KEY (node_ids, shard_uuid),\n" +
-                    "  UNIQUE (shard_id),\n" +
-                    "  UNIQUE (shard_uuid),\n" +
-                    "  UNIQUE (" + coveringIndexColumns + ")\n" +
-                    ")";
-        }
-
         try (Handle handle = dbi.open()) {
+            String sql;
+            String dbType = handle.getConnection().getMetaData().getDatabaseProductName();
+
+            if (bucketed) {
+                coveringIndexColumns
+                .add("bucket_number")
+                .add("shard_id")
+                .add("shard_uuid");
+
+                sql = getBucketedShardIndexTableDDL(dbType, tableId, tableColumns, coveringIndexColumns);
+            }
+            else {
+                coveringIndexColumns
+                .add("node_ids")
+                .add("shard_id")
+                .add("shard_uuid");
+
+                 sql = getNonBucketedShardIndexTableDDL(dbType, tableId, tableColumns, coveringIndexColumns);
+            }
             handle.execute(sql);
         }
         catch (DBIException e) {
+            throw metadataError(e);
+        }
+        catch (java.sql.SQLException e) {
             throw metadataError(e);
         }
     }
@@ -242,7 +294,7 @@ public class DatabaseShardManager
     public void dropTable(long tableId)
     {
         runTransaction(dbi, (handle, status) -> {
-            lockTable(handle, tableId);
+            lockTable(handle, tableId, metadataDaoType);
 
             if (!canDropTable(tableId, handle)) {
                 throw new PrestoException(RAPTOR_ERROR, "Cannot drop table. Data is found to be under retention for one or more partitions in this table.");
@@ -255,7 +307,7 @@ public class DatabaseShardManager
 
             handle.attach(ShardOrganizerDao.class).dropOrganizerJobs(tableId);
 
-            MetadataDao dao = handle.attach(MetadataDao.class);
+            MetadataDao dao = handle.attach(metadataDaoType);
             dao.dropColumns(tableId);
             dao.dropTable(tableId);
             return null;
@@ -282,6 +334,7 @@ public class DatabaseShardManager
             UUID uuid;
             while (rs.next()) {
                 uuid = uuidFromBytes(rs.getBytes("shard_uuid"));
+                log.warn("uuid binary is ," + rs.getBytes("shard_uuid") + " string is " + uuid.toString());
                 if (backupStore.isPresent() && !backupStore.get().canDeleteShard(uuid)) {
                     return false;
                 }
@@ -336,11 +389,11 @@ public class DatabaseShardManager
 
         runCommit(transactionId, (handle) -> {
             externalBatchId.ifPresent(shardDaoSupplier.attach(handle)::insertExternalBatch);
-            lockTable(handle, tableId);
+            lockTable(handle, tableId, metadataDaoType);
             insertShardsAndIndex(tableId, columns, shards, nodeIds, handle);
 
             ShardStats stats = shardStats(shards);
-            MetadataDao metadata = handle.attach(MetadataDao.class);
+            MetadataDao metadata = handle.attach(metadataDaoType);
             metadata.updateTableStats(tableId, shards.size(), stats.getRowCount(), stats.getCompressedSize(), stats.getUncompressedSize());
             metadata.updateTableVersion(tableId, updateTime);
         });
@@ -352,7 +405,7 @@ public class DatabaseShardManager
         Map<String, Integer> nodeIds = toNodeIdMap(newShards);
 
         runCommit(transactionId, (handle) -> {
-            lockTable(handle, tableId);
+            lockTable(handle, tableId, metadataDaoType);
 
             ShardStats newStats = shardStats(newShards);
             long rowCount = newStats.getRowCount();
@@ -373,7 +426,7 @@ public class DatabaseShardManager
             long shardCount = newShards.size() - oldShardUuids.size();
 
             if (!oldShardUuids.isEmpty() || !newShards.isEmpty()) {
-                MetadataDao metadata = handle.attach(MetadataDao.class);
+                MetadataDao metadata = handle.attach(metadataDaoType);
                 metadata.updateTableStats(tableId, shardCount, rowCount, compressedSize, uncompressedSize);
                 updateTime.ifPresent(time -> metadata.updateTableVersion(tableId, time));
             }
@@ -829,9 +882,9 @@ public class DatabaseShardManager
         handle.execute(sql, intArrayToBytes(nodeIds), uuidToBytes(shardUuid));
     }
 
-    private static void lockTable(Handle handle, long tableId)
+    private static void lockTable(Handle handle, long tableId, Class<MetadataDao> metadataDao)
     {
-        if (handle.attach(MetadataDao.class).getLockedTableId(tableId) == null) {
+        if (handle.attach(metadataDao).getLockedTableId(tableId) == null) {
             throw transactionConflict();
         }
     }

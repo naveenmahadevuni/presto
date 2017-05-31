@@ -97,6 +97,7 @@ import static com.facebook.presto.raptor.RaptorTableProperties.getSortColumns;
 import static com.facebook.presto.raptor.RaptorTableProperties.getTemporalColumn;
 import static com.facebook.presto.raptor.RaptorTableProperties.isOrganized;
 import static com.facebook.presto.raptor.util.DatabaseUtil.daoTransaction;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.raptor.util.DatabaseUtil.runIgnoringConstraintViolation;
 import static com.facebook.presto.raptor.util.DatabaseUtil.runTransaction;
@@ -129,6 +130,7 @@ public class RaptorMetadata
     private final JsonCodec<ShardInfo> shardInfoCodec;
     private final JsonCodec<ShardDelta> shardDeltaCodec;
     private final String connectorId;
+    private final Class<MetadataDao> metadataDaoType;
 
     private final AtomicReference<Long> currentTransactionId = new AtomicReference<>();
 
@@ -141,7 +143,8 @@ public class RaptorMetadata
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.dbi = requireNonNull(dbi, "dbi is null");
-        this.dao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.dao = onDemandDao(dbi, metadataDaoType);
         this.shardManager = requireNonNull(shardManager, "shardManager is null");
         this.shardInfoCodec = requireNonNull(shardInfoCodec, "shardInfoCodec is null");
         this.shardDeltaCodec = requireNonNull(shardDeltaCodec, "shardDeltaCodec is null");
@@ -427,7 +430,7 @@ public class RaptorMetadata
     {
         RaptorTableHandle table = checkType(tableHandle, RaptorTableHandle.class, "tableHandle");
         runTransaction(dbi, (handle, status) -> {
-            MetadataDao dao = handle.attach(MetadataDao.class);
+            MetadataDao dao = handle.attach(metadataDaoType);
             dao.renameTable(table.getTableId(), newTableName.getSchemaName(), newTableName.getTableName());
             return null;
         });
@@ -446,7 +449,7 @@ public class RaptorMetadata
         int ordinalPosition = existingColumns.size();
 
         String type = column.getType().getTypeSignature().toString();
-        daoTransaction(dbi, MetadataDao.class, dao -> {
+        daoTransaction(dbi, metadataDaoType, dao -> {
             dao.insertColumn(table.getTableId(), columnId, column.getName(), ordinalPosition, type, null, null);
             dao.updateTableVersion(table.getTableId(), session.getStartTime());
         });
@@ -459,7 +462,7 @@ public class RaptorMetadata
     {
         RaptorTableHandle table = checkType(tableHandle, RaptorTableHandle.class, "tableHandle");
         RaptorColumnHandle sourceColumn = checkType(source, RaptorColumnHandle.class, "columnHandle");
-        daoTransaction(dbi, MetadataDao.class, dao -> {
+        daoTransaction(dbi, metadataDaoType, dao -> {
             dao.renameColumn(table.getTableId(), sourceColumn.getColumnId(), target);
             dao.updateTableVersion(table.getTableId(), session.getStartTime());
         });
@@ -581,7 +584,7 @@ public class RaptorMetadata
         long updateTime = session.getStartTime();
 
         long newTableId = runTransaction(dbi, (dbiHandle, status) -> {
-            MetadataDao dao = dbiHandle.attach(MetadataDao.class);
+            MetadataDao dao = dbiHandle.attach(metadataDaoType);
 
             Long distributionId = table.getDistributionId().isPresent() ? table.getDistributionId().getAsLong() : null;
             // TODO: update default value of organization_enabled to true
@@ -766,7 +769,7 @@ public class RaptorMetadata
         String tableName = viewName.getTableName();
 
         if (replace) {
-            daoTransaction(dbi, MetadataDao.class, dao -> {
+            daoTransaction(dbi, metadataDaoType, dao -> {
                 dao.dropView(schemaName, tableName);
                 dao.insertView(schemaName, tableName, viewData);
             });

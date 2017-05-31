@@ -15,6 +15,8 @@ package com.facebook.presto.raptor.backup;
 
 import com.filepool.fplibrary.FPStreamInterface;
 
+import io.airlift.log.Logger;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -28,11 +30,12 @@ public class CenteraPartialFileInputStream extends InputStream implements FPStre
     private long             mPartialLength = -1;
     private long             mPartialEOF    = -1;
 
+    private Logger logger = Logger.get(this.getClass());
+
     public CenteraPartialFileInputStream(File pFile, long pOffset, long pLen) throws FileNotFoundException, IOException
     {
         mFile = new RandomAccessFile(pFile.getAbsolutePath(), "r");
 
-        //mPartialOffset = pOffset;
         mPartialLength  = pLen;
 
         mFile.seek(pOffset); // set the file point to the offset pos
@@ -52,6 +55,7 @@ public class CenteraPartialFileInputStream extends InputStream implements FPStre
             mMarkPos = mFile.getFilePointer();
         }
         catch (IOException e) {
+            logger.error("IOException while setting file pointer");
         }
     }
 
@@ -193,6 +197,7 @@ public class CenteraPartialFileInputStream extends InputStream implements FPStre
                 close();
             }
             catch (Exception e) {
+                logger.error("Exception occurred while the file is being closed");
             }
         }
     }

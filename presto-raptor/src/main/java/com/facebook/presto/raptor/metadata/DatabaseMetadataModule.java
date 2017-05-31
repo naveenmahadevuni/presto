@@ -15,6 +15,7 @@ package com.facebook.presto.raptor.metadata;
 
 import com.facebook.presto.raptor.backup.metadata.BackupMetadataDao;
 import com.facebook.presto.raptor.util.DaoSupplier;
+
 import com.google.common.reflect.TypeParameter;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Binder;
@@ -68,6 +69,15 @@ public class DatabaseMetadataModule
                     binder.install(new H2EmbeddedDataSourceModule("metadata", ForMetadata.class));
                     bindDaoSupplier(binder, ShardDao.class, H2ShardDao.class);
                     bindDaoSupplier(binder, BackupMetadataDao.class, H2BackupMetadataDao.class);
+                }));
+
+        install(installModuleIf(
+                DatabaseConfig.class,
+                config -> "postgresql".equals(config.getDatabaseType()),
+                binder -> {
+                    binder.install(new PGDataSourceModule());
+                    bindDaoSupplier(binder, ShardDao.class, PGShardDao.class);
+                    bindDaoSupplier(binder, BackupMetadataDao.class, PGBackupMetadataDao.class);
                 }));
     }
 
@@ -144,6 +154,32 @@ public class DatabaseMetadataModule
                     .addProperty("jdbc", config.getUrl())
                     .build();
             return new MySqlDataSource(new StaticServiceSelector(descriptor), mysqlConfig);
+        }
+    }
+
+    private static class PGDataSourceModule
+    implements Module
+    {
+        @Override
+        public void configure(Binder binder)
+        {
+            configBinder(binder).bindConfig(JdbcDatabaseConfig.class);
+            configBinder(binder).bindConfig(PGDataSourceConfig.class, ForMetadata.class, "metadata");
+            configBinder(binder).bindConfigDefaults(PGDataSourceConfig.class, ForMetadata.class, config -> {
+                config.setMaxConnections(100);
+                config.setDefaultFetchSize(1000);
+            });
+        }
+
+        @ForMetadata
+        @Singleton
+        @Provides
+        DataSource createDataSource(JdbcDatabaseConfig config, @ForMetadata PGDataSourceConfig pgConfig)
+        {
+            ServiceDescriptor descriptor = serviceDescriptor("postgresql")
+                    .addProperty("jdbc", config.getUrl())
+                    .build();
+            return new PGDataSource(new StaticServiceSelector(descriptor), pgConfig);
         }
     }
 }

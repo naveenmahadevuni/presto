@@ -15,7 +15,7 @@ package com.facebook.presto.raptor.backup.metadata;
 
 import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 
-public interface BackupSchemaDao
+public interface PGBackupSchemaDao extends BackupSchemaDao
 {
     @SqlUpdate("CREATE TABLE IF NOT EXISTS backup_centera (\n" +
             "  shard_uuid VARCHAR(36) NOT NULL,\n" +
@@ -27,8 +27,8 @@ public interface BackupSchemaDao
             "  retention_class TEXT ,\n" +
             "  Type TEXT ,\n" +
             "  Name TEXT ,\n" +
-            "  creation_date DATETIME NOT NULL ,\n" +
-            "  modification_date DATETIME ,\n" +
+            "  creation_date TIMESTAMP NOT NULL ,\n" +
+            "  modification_date TIMESTAMP ,\n" +
             "  creation_profile TEXT NOT NULL,\n" +
             "  modification_profile TEXT ,\n" +
             "  numfiles INT NOT NULL ,\n" +

@@ -106,7 +106,7 @@ public class TimeoutBackupStore
             return store.canDeleteShard(uuid);
         }
         catch (UncheckedTimeoutException e) {
-            throw new PrestoException(RAPTOR_BACKUP_TIMEOUT, "Shard can delete check timed out");
+            throw new PrestoException(RAPTOR_BACKUP_TIMEOUT, "Timed out while checking if the shard can be deleted");
         }
     }
 

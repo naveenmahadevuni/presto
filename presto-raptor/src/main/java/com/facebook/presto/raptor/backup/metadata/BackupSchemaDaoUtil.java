@@ -20,6 +20,7 @@ import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.exceptions.UnableToObtainConnectionException;
 
+import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 public final class BackupSchemaDaoUtil
@@ -33,11 +34,20 @@ public final class BackupSchemaDaoUtil
         Duration delay = new Duration(2, TimeUnit.SECONDS);
         while (true) {
             try (Handle handle = dbi.open()) {
-                createBackupMetadataTables(handle.attach(BackupSchemaDao.class));
+                if (handle.getConnection().getMetaData().getDatabaseProductName().equalsIgnoreCase("postgresql")) {
+                    createBackupMetadataTables(handle.attach(PGBackupSchemaDao.class));
+                }
+                else {
+                    createBackupMetadataTables(handle.attach(BackupSchemaDao.class));
+                }
                 return;
             }
             catch (UnableToObtainConnectionException e) {
                 log.warn("Failed to connect to database. Will retry again in %s. Exception: %s", delay, e.getMessage());
+                sleep(delay);
+            }
+            catch (SQLException e) {
+                log.warn("Failed to get database connection metadata. Will retry again in %s. Exception: %s", delay, e.getMessage());
                 sleep(delay);
             }
         }

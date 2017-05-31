@@ -19,6 +19,7 @@ import com.facebook.presto.raptor.metadata.ShardManager;
 import com.google.inject.Inject;
 import org.skife.jdbi.v2.IDBI;
 
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static java.util.Objects.requireNonNull;
 
@@ -28,12 +29,14 @@ public class OrganizationJobFactory
     private final MetadataDao metadataDao;
     private final ShardManager shardManager;
     private final ShardCompactor compactor;
+    private final Class<MetadataDao> metadataDaoType;
 
     @Inject
     public OrganizationJobFactory(@ForMetadata IDBI dbi, ShardManager shardManager, ShardCompactor compactor)
     {
         requireNonNull(dbi, "dbi is null");
-        this.metadataDao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.metadataDao = onDemandDao(dbi, metadataDaoType);
         this.shardManager = requireNonNull(shardManager, "shardManager is null");
         this.compactor = requireNonNull(compactor, "compactor is null");
     }

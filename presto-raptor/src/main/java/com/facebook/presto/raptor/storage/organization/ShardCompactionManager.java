@@ -45,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.facebook.presto.raptor.storage.organization.ShardOrganizerUtil.getOrganizationEligibleShards;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.spi.type.DateType.DATE;
 import static com.facebook.presto.spi.type.TimestampType.TIMESTAMP;
@@ -67,6 +68,7 @@ public class ShardCompactionManager
     private final AtomicBoolean shutdown = new AtomicBoolean();
 
     private final MetadataDao metadataDao;
+    private final Class<MetadataDao> metadataDaoType;
     private final ShardOrganizer organizer;
     private final ShardManager shardManager;
     private final String currentNodeIdentifier;
@@ -102,7 +104,8 @@ public class ShardCompactionManager
             boolean compactionEnabled)
     {
         this.dbi = requireNonNull(dbi, "dbi is null");
-        this.metadataDao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.metadataDao = onDemandDao(dbi, metadataDaoType);
 
         this.currentNodeIdentifier = requireNonNull(currentNodeIdentifier, "currentNodeIdentifier is null");
         this.shardManager = requireNonNull(shardManager, "shardManager is null");

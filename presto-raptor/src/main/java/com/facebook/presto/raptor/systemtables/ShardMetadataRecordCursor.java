@@ -43,6 +43,7 @@ import static com.facebook.presto.raptor.RaptorColumnHandle.SHARD_UUID_COLUMN_TY
 import static com.facebook.presto.raptor.metadata.DatabaseShardManager.maxColumn;
 import static com.facebook.presto.raptor.metadata.DatabaseShardManager.minColumn;
 import static com.facebook.presto.raptor.metadata.DatabaseShardManager.shardIndexTable;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.metadataError;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.raptor.util.Types.checkType;
@@ -84,6 +85,7 @@ public class ShardMetadataRecordCursor
 
     private final IDBI dbi;
     private final MetadataDao metadataDao;
+    private final Class<MetadataDao> metadataDaoType;
 
     private final Iterator<Long> tableIds;
     private final List<String> columnNames;
@@ -100,7 +102,8 @@ public class ShardMetadataRecordCursor
     public ShardMetadataRecordCursor(IDBI dbi, TupleDomain<Integer> tupleDomain)
     {
         this.dbi = requireNonNull(dbi, "dbi is null");
-        this.metadataDao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.metadataDao = onDemandDao(dbi, metadataDaoType);
         this.tupleDomain = requireNonNull(tupleDomain, "tupleDomain is null");
         this.tableIds = getTableIds(dbi, tupleDomain);
         this.columnNames = createQualifiedColumnNames();

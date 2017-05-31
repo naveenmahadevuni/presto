@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.raptor.util;
 
+import com.facebook.presto.raptor.metadata.MetadataDao;
+import com.facebook.presto.raptor.metadata.PGMetadataDao;
 import com.facebook.presto.spi.PrestoException;
 import com.google.common.base.Throwables;
 import org.skife.jdbi.v2.Handle;
@@ -54,6 +56,26 @@ public final class DatabaseUtil
                 throw metadataError(e.getCause());
             }
         });
+    }
+
+    public static Class getMetadataDaoType(IDBI dbi)
+    {
+        requireNonNull(dbi, "dbi is null");
+        try (Handle handle = dbi.open()) {
+            String dbType = handle.getConnection().getMetaData().getDatabaseProductName();
+            if (dbType.equalsIgnoreCase("postgresql")) {
+                return PGMetadataDao.class;
+            }
+            else {
+                return MetadataDao.class;
+            }
+        }
+        catch (DBIException e) {
+            throw metadataError(e);
+        }
+        catch (SQLException e) {
+            throw metadataError(e.getCause());
+        }
     }
 
     public static <T> T runTransaction(IDBI dbi, TransactionCallback<T> callback)

@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.facebook.presto.raptor.storage.organization.ShardOrganizerUtil.createOrganizationSet;
 import static com.facebook.presto.raptor.storage.organization.ShardOrganizerUtil.getOrganizationEligibleShards;
 import static com.facebook.presto.raptor.storage.organization.ShardOrganizerUtil.getShardsByDaysBuckets;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.google.common.collect.Sets.difference;
 import static com.google.common.collect.Sets.newConcurrentHashSet;
@@ -69,6 +70,7 @@ public class ShardOrganizationManager
 
     private final IDBI dbi;
     private final MetadataDao metadataDao;
+    private final Class<MetadataDao> metadataDaoType;
     private final ShardOrganizerDao organizerDao;
     private final ShardManager shardManager;
 
@@ -105,7 +107,8 @@ public class ShardOrganizationManager
             Duration organizationInterval)
     {
         this.dbi = requireNonNull(dbi, "dbi is null");
-        this.metadataDao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.metadataDao = onDemandDao(dbi, metadataDaoType);
         this.organizerDao = onDemandDao(dbi, ShardOrganizerDao.class);
 
         this.organizer = requireNonNull(organizer, "organizer is null");

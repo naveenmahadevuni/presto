@@ -50,6 +50,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import static com.facebook.presto.raptor.RaptorErrorCode.RAPTOR_CORRUPT_METADATA;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.raptor.util.Types.checkType;
 import static com.facebook.presto.spi.SystemTable.Distribution.SINGLE_COORDINATOR;
@@ -72,11 +73,13 @@ public class TableMetadataSystemTable
 
     private final MetadataDao dao;
     private final ConnectorTableMetadata tableMetadata;
+    private final Class<MetadataDao> metadataDaoType;
 
     @Inject
     public TableMetadataSystemTable(@ForMetadata IDBI dbi, TypeManager typeManager)
     {
-        this.dao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.dao = onDemandDao(dbi, metadataDaoType);
         requireNonNull(typeManager, "typeManager is null");
 
         Type arrayOfVarchar = typeManager.getType(parseTypeSignature("array<varchar>"));

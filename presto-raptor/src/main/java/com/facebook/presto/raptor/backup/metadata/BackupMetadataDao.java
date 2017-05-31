@@ -13,22 +13,16 @@
  */
 package com.facebook.presto.raptor.backup.metadata;
 
-//import com.facebook.presto.raptor.backup.CenteraBackupStore.ClipRetentionInfo;
-//import com.facebook.presto.raptor.backup.CenteraBackupStore.ClipRetentionInfoMapper;
 import com.facebook.presto.raptor.util.UuidUtil.UuidArgumentFactory;
 import com.facebook.presto.raptor.util.UuidUtil.UuidMapperFactory;
 import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.GetGeneratedKeys;
-//import org.skife.jdbi.v2.sqlobject.SqlBatch;
+//import org.skife.jdbi.v2.sqlobject.GetGeneratedKeys;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
 import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-//import org.skife.jdbi.v2.sqlobject.customizers.Mapper;
 import org.skife.jdbi.v2.sqlobject.customizers.RegisterArgumentFactory;
 import org.skife.jdbi.v2.sqlobject.customizers.RegisterMapperFactory;
 
 import java.sql.Timestamp;
-//import java.util.List;
-//import java.util.Set;
 
 @RegisterArgumentFactory(UuidArgumentFactory.class)
 @RegisterMapperFactory(UuidMapperFactory.class)
@@ -46,8 +40,8 @@ public interface BackupMetadataDao
             " :name, :creationDate, :modificationDate, :creationProfile,\n" +
             " :modificationProfile, :numFiles, :totalSize, :namingScheme,\n" +
             " :numTags, :appVendor, :appName, :appVersion)")
-    @GetGeneratedKeys
-    int insertCenteraClipInfoForShard(
+    //@GetGeneratedKeys
+    void insertCenteraClipInfoForShard(
             @Bind("shardUuid") String shardUuid, @Bind("clipId") String clipId,
             @Bind("fileName") String fileName, @Bind("creationPoolid") String creationPoolid,
             @Bind("modificationPoolid") String modificationPoolid,
@@ -65,9 +59,4 @@ public interface BackupMetadataDao
     @SqlUpdate("DELETE FROM backup_centera \n" +
                "WHERE shard_uuid = :shardUuid")
     void deleteCenteraClipInfoForShard(@Bind("shardUuid") String shardUuid);
-
-  /*  @SqlQuery("SELECT creation_date, retention_period from backup_centera \n" +
-              "WHERE shard_uuid = :shardUuid")
-    @Mapper(ClipRetentionInfoMapper.class)
-    ClipRetentionInfo getClipRetentionInfo(@Bind("shardUuid") String shardUuid);*/
 }

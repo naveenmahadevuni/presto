@@ -28,6 +28,7 @@ import com.filepool.fplibrary.FPRetentionClassContext;
 import com.filepool.fplibrary.FPTag;
 
 import io.airlift.log.Logger;
+import io.airlift.units.DataSize;
 
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
@@ -334,10 +335,10 @@ public class CenteraBackupStore implements BackupStore
             newTag.setAttribute("filename", source.getPath());
 
             String minChunkSizeProp = configProperties.getProperty("centera.min_chunk_size");
-            int minChunkSize = 0;
+            DataSize minChunkSize = null;
 
             if (minChunkSizeProp != null) {
-                minChunkSize = Integer.parseInt(minChunkSizeProp);
+                minChunkSize = DataSize.valueOf(minChunkSizeProp);
             }
 
             String chunkCountProp = configProperties.getProperty("centera.chunk_count");
@@ -349,7 +350,7 @@ public class CenteraBackupStore implements BackupStore
             }
 
             // write the binary data for this tag to the Centera
-            if (minChunkSize <= 0 || source.length() < minChunkSize) {
+            if (minChunkSize == null || minChunkSize.toBytes() <= 0 || source.length() < minChunkSize.toBytes()) {
                 logger.debug("Writing shard file " + source.getPath() + " as single stream to centera");
                 newTag.BlobWrite(inputStream);
             }

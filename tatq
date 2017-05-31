@@ -1,0 +1,21 @@
+diff --git a/presto-raptor/src/main/java/com/facebook/presto/raptor/backup/BackupModule.java b/presto-raptor/src/main/java/com/facebook/presto/raptor/backup/BackupModule.java
+index 3b36d41..a8198ea 100644
+--- a/presto-raptor/src/main/java/com/facebook/presto/raptor/backup/BackupModule.java
++++ b/presto-raptor/src/main/java/com/facebook/presto/raptor/backup/BackupModule.java
+@@ -14,8 +14,6 @@
+ package com.facebook.presto.raptor.backup;
+ 
+ import com.facebook.presto.raptor.RaptorConnectorId;
+-//import com.facebook.presto.raptor.backup.metadata.BackupMetadataDao;
+-//import com.facebook.presto.raptor.backup.metadata.BackupMetadataManager;
+ import com.google.common.collect.ImmutableMap;
+ import com.google.inject.Binder;
+ import com.google.inject.Module;
+@@ -73,7 +71,6 @@ public class BackupModule
+             }
+         }
+         binder.bind(BackupService.class).to(BackupServiceManager.class).in(Scopes.SINGLETON);
+-        //binder.bind(BackupMetadataManager.class).in(Scopes.SINGLETON);
+     }
+ 
+     @Provides

@@ -38,6 +38,7 @@ import java.util.Map;
 
 import static com.facebook.presto.raptor.systemtables.TableMetadataSystemTable.getColumnIndex;
 import static com.facebook.presto.raptor.systemtables.TableMetadataSystemTable.getStringValue;
+import static com.facebook.presto.raptor.util.DatabaseUtil.getMetadataDaoType;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.spi.SystemTable.Distribution.SINGLE_COORDINATOR;
 import static com.facebook.presto.spi.predicate.TupleDomain.extractFixedValues;
@@ -69,11 +70,13 @@ public class TableStatsSystemTable
                     .build());
 
     private final MetadataDao dao;
+    private final Class<MetadataDao> metadataDaoType;
 
     @Inject
     public TableStatsSystemTable(@ForMetadata IDBI dbi)
     {
-        this.dao = onDemandDao(dbi, MetadataDao.class);
+        this.metadataDaoType = getMetadataDaoType(dbi);
+        this.dao = onDemandDao(dbi, metadataDaoType);
     }
 
     @Override
